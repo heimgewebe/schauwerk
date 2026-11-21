@@ -1878,6 +1878,114 @@ function previouslyRoutedEdges(edgeId) {
   // Match the server's bounded routing context for dense documents.
   return prior.slice(edges.size > 64 ? -4 : -12);
 }
+
+/**
+ * Re-anchor the server's already collision-checked knowledge-map path.
+ * A small local layout nudge must not replace its free lanes with the generic
+ * Bézier fallback (which can run straight through unrelated node cards).
+ */
+function nudgedCertifiedKnowledgePath(edge, fromOffset, toOffset) {
+  const maxNudge = Math.max(
+    Math.abs(fromOffset.x), Math.abs(fromOffset.y),
+    Math.abs(toOffset.x), Math.abs(toOffset.y),
+  );
+  if (maxNudge > 48 || !/^[MLC0-9+.,\s-]+$/.test(edge.basePath)) return null;
+  const chunks = [...edge.basePath.matchAll(/([MLC])\s*([^MLC]*)/g)];
+  if (chunks.length < 2 || chunks.length > 18 || chunks[0][1] !== "M") return null;
+  const segments = chunks.map(match => ({
+    command: match[1],
+    coordinates: (match[2].match(/-?(?:\d+(?:\.\d*)?|\.\d+)/g) || []).map(Number),
+  }));
+  if (!segments.every(part =>
+    part.coordinates.length === (part.command === "C" ? 6 : 2) &&
+    part.coordinates.every(Number.isFinite))) return null;
+  const first = segments[0];
+  const following = segments[1];
+  const last = segments[segments.length - 1];
+  first.coordinates[0] += fromOffset.x;
+  first.coordinates[1] += fromOffset.y;
+  // Keep the short source/target stubs attached to their original ports.
+  const originalStart = chunks[0][2].match(/-?(?:\d+(?:\.\d*)?|\.\d+)/g).map(Number);
+  if (following.command === "C") {
+    following.coordinates[0] += fromOffset.x;
+    following.coordinates[1] += fromOffset.y;
+  } else if (
+    segments.length > 2 && following.command === "L" &&
+    Math.hypot(
+      following.coordinates[0] - originalStart[0],
+      following.coordinates[1] - originalStart[1],
+    ) <= 80
+  ) {
+    following.coordinates[0] += fromOffset.x;
+    following.coordinates[1] += fromOffset.y;
+  }
+  if (last.command === "C") {
+    last.coordinates[2] += toOffset.x;
+    last.coordinates[3] += toOffset.y;
+    last.coordinates[4] += toOffset.x;
+    last.coordinates[5] += toOffset.y;
+  } else {
+    const final = last.coordinates.slice();
+    last.coordinates[0] += toOffset.x;
+    last.coordinates[1] += toOffset.y;
+    const preceding = segments[segments.length - 2];
+    if (
+      segments.length > 3 && preceding.command === "L" &&
+      Math.hypot(
+        final[0] - preceding.coordinates[0],
+        final[1] - preceding.coordinates[1],
+      ) <= 80
+    ) {
+      preceding.coordinates[0] += toOffset.x;
+      preceding.coordinates[1] += toOffset.y;
+    }
+  }
+  return segments.map(part =>
+    part.command + " " + part.coordinates.map(value => value.toFixed(1)).join(" ")
+  ).join(" ");
+}
+
+function knowledgePathAvoidsCards(edge, candidate, labelX, labelY) {
+  const source = edge.path.getAttribute("d") || "";
+  edge.path.setAttribute("d", candidate);
+  try {
+    const length = edge.path.getTotalLength();
+    if (!Number.isFinite(length) || length <= 0) return false;
+    const bounds = edge.path.getBBox();
+    const labelW = Number(edge.labelRect.getAttribute("width"));
+    const labelH = Number(edge.labelRect.getAttribute("height"));
+    if (!Number.isFinite(labelX) || !Number.isFinite(labelY)
+      || !(labelW > 0 && labelH > 0)) return false;
+    const foreign = [];
+    for (const [id] of nodes) {
+      const card = liveBounds(id);
+      if (!card) return false;
+      const r = {
+        minX: card.x + 2, maxX: card.x + card.width - 2,
+        minY: card.y + 2, maxY: card.y + card.height - 2,
+      };
+      if (labelX + labelW / 2 > r.minX && labelX - labelW / 2 < r.maxX
+        && labelY + labelH / 2 > r.minY && labelY - labelH / 2 < r.maxY) return false;
+      if (id !== edge.from && id !== edge.to
+        && bounds.x < r.maxX && bounds.x + bounds.width > r.minX
+        && bounds.y < r.maxY && bounds.y + bounds.height > r.minY) foreign.push(r);
+    }
+    if (!foreign.length) return true;
+    const steps = Math.max(2, Math.min(350, Math.ceil(length / 8)));
+    for (let index = 1; index < steps; index += 1) {
+      const point = edge.path.getPointAtLength(length * index / steps);
+      if (foreign.some(r =>
+        point.x > r.minX && point.x < r.maxX &&
+        point.y > r.minY && point.y < r.maxY)) return false;
+    }
+    return true;
+  } catch (_) {
+    return false;
+  } finally {
+    edge.path.setAttribute("d", source);
+  }
+}
+
 function updateEdgeGeometry(edgeId) {
   const edgeState = edges.get(edgeId);
   if (!edgeState) return;
@@ -1932,10 +2040,63 @@ function updateEdgeGeometry(edgeId) {
     edgeState.path.setAttribute("d", edgeState.basePath);
     edgeState.hitPath.setAttribute("d", edgeState.basePath);
     resetEdgeLabel(edgeState);
+    edgeState.element.dataset.route = edgeState.route;
     if (edgeState.element.dataset.routingPending === "true") {
       placeLiveEdgeConflict(edgeState, false);
     }
     return;
+  }
+  if (knowledgeMapOverview && edges.size <= 40) {
+    const anchored = nudgedCertifiedKnowledgePath(edgeState, fromOffset, toOffset);
+    if (
+      anchored &&
+      knowledgePathAvoidsCards(
+        edgeState, anchored, edgeState.baseLabelX, edgeState.baseLabelY,
+      )
+    ) {
+      edgeState.path.setAttribute("d", anchored);
+      edgeState.hitPath.setAttribute("d", anchored);
+      edgeState.naturalLabelX = edgeState.baseLabelX;
+      edgeState.naturalLabelY = edgeState.baseLabelY;
+      edgeState.routeBounds = null;
+      edgeState.routePoints = edgeState.baseRoutePoints;
+      resetEdgeLabel(edgeState);
+      placeLiveEdgeConflict(edgeState, false);
+      edgeState.element.dataset.route = edgeState.route;
+      return;
+    }
+    // For a large move or a new obstacle use the existing smart router,
+    // not an unverified card-piercing cubic.
+    const liveNodes = [...nodes.keys()].map(id => {
+      const b = liveBounds(id);
+      return b ? { id, type: "node", x: b.x, y: b.y,
+        width: b.width, height: b.height } : null;
+    });
+    if (liveNodes.every(Boolean)) {
+      const source = liveNodes.find(node => node.id === edgeState.from);
+      const target = liveNodes.find(node => node.id === edgeState.to);
+      const alternative = source && target
+        ? smartEdgeGeometry(source, target, liveNodes, {
+            lane: edgeState.lane, fromSide: edgeState.fromSide,
+            toSide: edgeState.toSide,
+          })
+        : null;
+      if (alternative?.collisionFree && knowledgePathAvoidsCards(
+        edgeState, alternative.path, alternative.labelX, alternative.labelY,
+      )) {
+        edgeState.path.setAttribute("d", alternative.path);
+        edgeState.hitPath.setAttribute("d", alternative.path);
+        edgeState.naturalLabelX = alternative.labelX;
+        edgeState.naturalLabelY = alternative.labelY;
+        edgeState.routeBounds = null;
+        edgeState.routePoints = alternative.points;
+        placeLiveLabel(edgeState, alternative.labelX, alternative.labelY);
+        placeLiveEdgeConflict(edgeState, false);
+        edgeState.element.dataset.route = "knowledge-map-live-smart";
+        return;
+      }
+    }
+    edgeState.element.dataset.route = "knowledge-map-live-conflict";
   }
   const sourceBounds = liveBounds(edgeState.from);
   const targetBounds = liveBounds(edgeState.to);
