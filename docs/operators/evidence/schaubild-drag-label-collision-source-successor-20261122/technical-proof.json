@@ -11,7 +11,8 @@
     "production_deployed",
     "physical_ipad_safari_acceptance"
   ],
-  "evidence_digest": "d2ce1bc842971c208abbf3293531c64fe71a2a7f1a7d2af7b2595045d1493bd2",
+  "evidence_digest": "ef7186da72caf16a5a5ff29cadedad8c28f955674abbf2ba11ffddbfb0526c44",
+  "implementation_commit": "0757a3e3da19b3108959a49ea147a3a5a4738794",
   "predecessor_technical_proof": {
     "evidence_digest": "601e9522fad82e20be07f68a48ad00edf292b950264b9c151adc80bb4da64d0c",
     "path": "docs/operators/evidence/schaubild-drag-gutter-source-successor-20261121/technical-proof.json",
@@ -23,7 +24,6 @@
     "tests/visual/test_native_viewer.py": "cf39438a85055e73c747d8e99df4316c034d5206adc360ce87e5ac806d915101",
     "tests/visual/test_native_viewer_browser.py": "e7786fb4179005ff49451fe03da1404a25b796db94875af9a640754234fb2341"
   },
-  "source_commit": "0757a3e3da19b3108959a49ea147a3a5a4738794",
   "source_mode": "source-code-successor",
   "source_pr": 270,
   "source_repository": "heimgewebe/schauwerk",
