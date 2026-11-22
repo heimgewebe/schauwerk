@@ -2889,6 +2889,185 @@ try {
 
 
 
+
+
+@pytest.mark.parametrize("storage_blocked", [False, True])
+def test_knowledge_map_large_move_rechecks_foreign_routes_and_labels(
+    tmp_path: Path, storage_blocked: bool,
+) -> None:
+    """A displaced hub must not cover unrelated labels or preserve pierced routes."""
+    import html
+    import re
+    import runpy
+
+    chrome = _chrome()
+    if chrome is None:
+        _skip_or_fail_browser("Chrome unavailable for Knowledge Map drag collision test")
+        raise AssertionError("unreachable")
+    model = runpy.run_path(
+        str(ROOT / "tests/visual/test_sinn_knowledge_map.py")
+    )["_reported_sinn_16_24_model"]()
+    assert len(model["nodes"]) == 16 and len(model["edges"]) == 24
+    output = tmp_path / "sinn"
+    build_native_viewer(model, output)
+    index = output / "index.html"
+    source = index.read_text(encoding="utf-8")
+    app_tag = '<script type="module" src="app.js"></script>'
+    assert source.count(app_tag) == 1
+    injection = r"""
+<script>
+// This large user-controlled move originally made e01's label overlap
+// Beziehungen, then let unrelated e09 go straight through the moved Sinn.
+const svg = document.querySelector("#nativeDiagram");
+localStorage.setItem(
+  "schauwerk.native-viewer.layout.v1." + svg.dataset.inputDigest,
+  JSON.stringify({ sinn: { x: 0, y: 750 } })
+);
+Element.prototype.setPointerCapture = function () {};
+Element.prototype.releasePointerCapture = function () {};
+</script>
+<script type="module" src="app.js"></script>
+<script type="module">
+const delay = ms => new Promise(resolve => setTimeout(resolve, ms));
+try {
+  const root = document.querySelector("#nativeDiagram");
+  const canvas = document.querySelector("#nativeCanvas");
+  const viewport = document.querySelector("#nativeViewport");
+  const moved = document.querySelector("#native-node-sinn");
+  for (let i = 0; i < 200; i++) {
+    if (moved?.getAttribute("transform")?.includes("750") &&
+        canvas?.style?.transform?.includes("scale(")) break;
+    await delay(30);
+  }
+  if (!moved?.getAttribute("transform")?.includes("750"))
+    throw new Error("stored hub offset missing");
+  const source = JSON.parse(document.querySelector("#nativeModel").textContent);
+  const endpoints = new Map(
+    source.edges.map(e => [String(e.id), [String(e.from), String(e.to)]])
+  );
+  const inspect = () => {
+    const cards = [...root.querySelectorAll('[data-source-kind="node"]')].map(n => [
+      n.dataset.sourceId, n.querySelector(":scope > rect").getBoundingClientRect()
+    ]);
+    const edges = [...root.querySelectorAll('[data-source-kind="edge"]')];
+    if (cards.length !== 16 || edges.length !== 24)
+      throw new Error("source ids or relationships lost");
+    const labels = edges.map(e => [
+      e.dataset.sourceId,
+      [...e.children].find(n => n instanceof SVGRectElement).getBoundingClientRect()
+    ]);
+    const overlaps = (a, b) =>
+      Math.min(a.right, b.right) - Math.max(a.left, b.left) > 1 &&
+      Math.min(a.bottom, b.bottom) - Math.max(a.top, b.top) > 1;
+    for (const [id, label] of labels) {
+      for (const [nodeId, card] of cards)
+        if (overlaps(label, card))
+          throw new Error("label-card:" + id + ":" + nodeId);
+    }
+    for (let i = 0; i < labels.length; i++)
+      for (let j = i + 1; j < labels.length; j++)
+        if (overlaps(labels[i][1], labels[j][1]))
+          throw new Error("label-label:" + labels[i][0] + ":" + labels[j][0]);
+    for (const edge of edges) {
+      const id = edge.dataset.sourceId;
+      if (edge.dataset.routingConflict === "true" ||
+          edge.dataset.labelConflict === "true")
+        throw new Error("unresolved routing/label conflict:" + id);
+      const path = [...edge.children].find(n => n instanceof SVGPathElement);
+      if (!path) throw new Error("missing path:" + id);
+      const length = path.getTotalLength();
+      const matrix = path.getScreenCTM();
+      if (!(length > 0 && matrix)) throw new Error("empty path:" + id);
+      const n = Math.min(750, Math.max(2, Math.ceil(length / 7)));
+      for (let k = 1; k < n; k++) {
+        const point = path.getPointAtLength(length * k / n)
+          .matrixTransform(matrix);
+        for (const [nodeId, card] of cards) {
+          if (endpoints.get(id).includes(nodeId)) continue;
+          if (point.x > card.left + 1 && point.x < card.right - 1 &&
+              point.y > card.top + 1 && point.y < card.bottom - 1)
+            throw new Error("path-card:" + id + ":" + nodeId);
+        }
+      }
+    }
+  };
+  inspect();
+  // The release path must also recertify an unrelated edge that now touches
+  // a moved card; startup-only repair is insufficient.
+  const target = moved.querySelector(":scope > rect");
+  const bounds = target.getBoundingClientRect();
+  const x = bounds.left + bounds.width / 2;
+  const y = bounds.top + bounds.height / 2;
+  const type = "touch", pointerId = 37;
+  const fire = (element, eventType, dy) => element.dispatchEvent(
+    new PointerEvent(eventType, {
+      bubbles: true, pointerId, pointerType: type, isPrimary: true,
+      clientX: x, clientY: y + dy, button: 0,
+      buttons: eventType === "pointerup" ? 0 : 1,
+    })
+  );
+  const originalTransform = moved.getAttribute("transform");
+  fire(target, "pointerdown", 0);
+  fire(viewport, "pointermove", 42);
+  fire(viewport, "pointerup", 42);
+  if (moved.getAttribute("transform") === originalTransform)
+    throw new Error("pointer drag did not move hub");
+  await delay(25);
+  inspect();
+  document.documentElement.dataset.sinnMoveCollisionRegression = "pass";
+} catch(error) {
+  document.documentElement.dataset.sinnMoveCollisionRegression = "fail";
+  document.documentElement.dataset.sinnMoveCollisionError =
+    String(error?.message || error);
+}
+</script>
+"""
+    if storage_blocked:
+        # The view must stay collision-free even when localStorage refuses
+        # the drag receipt; persistence and render correctness are separate.
+        needle = '  fire(target, "pointerdown", 0);'
+        assert injection.count(needle) == 1
+        injection = injection.replace(
+            needle,
+            '  Storage.prototype.setItem = () => { throw new Error("blocked"); };\n'
+            + needle,
+            1,
+        )
+    index.write_text(source.replace(app_tag, injection, 1), encoding="utf-8")
+
+    class QuietHandler(SimpleHTTPRequestHandler):
+        def log_message(self, format: str, *args: object) -> None:  # noqa: A002
+            return
+
+    server = ThreadingHTTPServer(
+        ("127.0.0.1", 0), partial(QuietHandler, directory=str(output))
+    )
+    thread = threading.Thread(target=server.serve_forever, daemon=True)
+    thread.start()
+    try:
+        proc = subprocess.run(
+            [chrome, "--headless=new",
+             f"--user-data-dir={tmp_path / 'profile'}", "--no-first-run",
+             "--disable-gpu", "--disable-dev-shm-usage", "--no-sandbox",
+             "--virtual-time-budget=23000", "--dump-dom",
+             f"http://127.0.0.1:{server.server_address[1]}/"],
+            capture_output=True, text=True, timeout=50, check=False,
+        )
+    finally:
+        server.shutdown()
+        server.server_close()
+        thread.join(timeout=5)
+    assert proc.returncode == 0, proc.stderr[-1700:]
+    if 'data-sinn-move-collision-regression="pass"' not in proc.stdout:
+        message = re.search(
+            r'data-sinn-move-collision-error="([^"]*)"', proc.stdout
+        )
+        pytest.fail(
+            "real Chrome Sinn node move collision regression: " +
+            (html.unescape(message.group(1)) if message else proc.stdout[-1300:])
+        )
+
+
 def test_knowledge_map_paths_must_not_pierce_own_endpoint_cards(
     tmp_path: Path,
 ) -> None:
