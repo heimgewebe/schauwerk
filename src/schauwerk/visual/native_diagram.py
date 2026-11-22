@@ -3449,7 +3449,9 @@ def _render_edge(
     if (
         intent != "process"
         and kind != "feedback"
-        and route != "narrative-parallel"
+        # An accepted long card-safe route already places its label on its
+        # own horizontal rail, not on the original source-to-target diagonal.
+        and route not in {"narrative-parallel", "knowledge-map-long-card-safe"}
         and source_position[0] != target_position[0]
         and source_position[1] != target_position[1]
     ):

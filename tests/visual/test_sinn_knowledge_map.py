@@ -1096,3 +1096,21 @@ def test_reported_sinn_16_24_equal_degree_is_not_forced_into_the_center() -> Non
         )
         is None
     )
+
+
+def test_reported_sinn_16_24_long_card_label_follows_own_path() -> None:
+    """A certified long card-safe detour must not leave its caption detached."""
+    from schauwerk.visual.native_diagram import _process_label_path_distance_sq
+
+    root = ET.fromstring(render_native_diagram(_reported_sinn_16_24_model()))
+    edge = _edges(root)["e12"]  # Verantwortung -> Handeln ("prägt")
+    assert edge.get("data-route") == "knowledge-map-long-card-safe"
+    path = edge.find(SVG + "path")
+    label = edge.find(SVG + "rect")
+    assert path is not None and label is not None
+    box = tuple(float(label.get(key, "0")) for key in ("x", "y", "width", "height"))
+    distance_squared = _process_label_path_distance_sq(path.get("d", ""), box)
+    assert distance_squared is not None
+    assert distance_squared <= (box[2] / 2 + 12) ** 2, (
+        distance_squared**0.5, box,
+    )
