@@ -658,8 +658,15 @@ def _knowledge_map_ordered_columns(
 def _knowledge_map_leading_node(
     nodes: Sequence[Mapping[str, Any]],
     edges: Sequence[Mapping[str, Any]],
+    *,
+    allow_unique_max: bool = False,
 ) -> str | None:
-    """Find a genuinely dominant semantic hub, without relying on labels or IDs."""
+    """Find a hub by links; grouped maps can separately admit a unique leader.
+
+    The relaxed path is used only with the independent three-theme affinity
+    guard in _knowledge_map_centered_columns. Ungrouped maps keep the stricter
+    dominance requirement so input order is not casually overwritten.
+    """
     if not 5 <= len(nodes) <= 32:
         return None
     degree: dict[str, int] = defaultdict(int)
@@ -673,11 +680,12 @@ def _knowledge_map_leading_node(
          for index, node in enumerate(nodes)),
         key=lambda item: (-item[0], item[1]),
     )
-    if (
-        len(ranked) < 2
-        or ranked[0][0] < 5
-        or ranked[0][0] * 2 < ranked[1][0] * 3
-    ):
+    if len(ranked) < 2 or ranked[0][0] < 5:
+        return None
+    if allow_unique_max:
+        if ranked[0][0] <= ranked[1][0]:
+            return None
+    elif ranked[0][0] * 2 < ranked[1][0] * 3:
         return None
     return ranked[0][2]
 
@@ -686,6 +694,8 @@ def _knowledge_map_centered_columns(
     columns: list[tuple[str | None, str, list[Mapping[str, Any]]]],
     edges: Sequence[Mapping[str, Any]],
     hub_id: str,
+    *,
+    preserve_group_order: bool = False,
 ) -> list[tuple[str | None, str, list[Mapping[str, Any]]]]:
     """Keep a strong ungrouped hub central and its closest themes nearby.
 
@@ -717,6 +727,16 @@ def _knowledge_map_centered_columns(
             affinity[str(owner[other])] += 1
     if sum(affinity.get(str(group_id), 0) > 0 for group_id, _, _ in grouped) < 3:
         return columns
+
+    if preserve_group_order:
+        # A narrowly leading hub should be central, but its slightly higher
+        # degree is not reason to scramble the author's thematic group order.
+        center = len(grouped) // 2
+        return [
+            *grouped[:center],
+            (None, "Leitbegriff", ungrouped[0][2]),
+            *grouped[center:],
+        ]
 
     # Nearest left/right slots get the most directly related groups; ties
     # retain the source's group order. No new semantic group is added.
@@ -778,6 +798,18 @@ def _layout(
                 columns = _knowledge_map_centered_columns(
                     columns, model["edges"], hub
                 )
+            else:
+                # The most-connected ungrouped concept can still be central
+                # when it spans three themes, even if a secondary node has a
+                # nearly equal degree. Keep thematic order in that weaker case.
+                unique_hub = _knowledge_map_leading_node(
+                    nodes, model["edges"], allow_unique_max=True
+                )
+                if unique_hub is not None:
+                    columns = _knowledge_map_centered_columns(
+                        columns, model["edges"], unique_hub,
+                        preserve_group_order=True,
+                    )
             columns = _knowledge_map_ordered_columns(columns, model["edges"])
 
         maximum_rows = max(1, *(len(column_nodes) for _, _, column_nodes in columns))

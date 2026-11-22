@@ -848,3 +848,251 @@ def test_reported_sinn_routes_avoid_foreign_cards_and_labels() -> None:
     assert edges["e20"].attrib["data-route"] == "knowledge-map-readable-gutter"
     # The high-visibility risk edge no longer needs a giant cross-row diagonal.
     assert node_boxes["zufall"][1] == node_boxes["orientierung"][1]
+
+
+def _reported_sinn_16_24_model() -> dict:
+    """Exactly the 16-node, 24-relation Sinn model reported on 2026-11-22."""
+    groups=[{'id':x,'label':y} for x,y in [
+     ('dimensionen','Dimensionen des Sinns'),('quellen','Quellen des Sinns'),
+     ('sinnbildung','Wie Sinn entsteht'),('spannungen','Grenzen und Widersprüche')]]
+    nodes_data = [
+        ('sinn', 'Sinn', 'concept', None,
+            'Die erfahrene oder angenommene Bedeutsamkeit von Leben, Handlungen und '
+            'Ereignissen.'
+        ),
+        ('bedeutsamkeit', 'Bedeutsamkeit', 'concept', 'dimensionen',
+            'Etwas zählt, besitzt Wert oder ist nicht gleichgültig.'
+        ),
+        ('kohaerenz', 'Zusammenhang', 'concept', 'dimensionen',
+            'Erfahrungen und Ereignisse erscheinen als verständliches Ganzes.'
+        ),
+        ('orientierung', 'Orientierung', 'concept', 'dimensionen',
+            'Sinn bietet Richtung für Entscheidungen und Lebensführung.'
+        ),
+        ('beziehungen', 'Beziehungen', 'concept', 'quellen',
+            'Liebe, Zugehörigkeit und Anerkennung können Sinn erfahrbar machen.'
+        ),
+        ('werte', 'Werte', 'concept', 'quellen',
+            'Überzeugungen darüber, was wichtig und erstrebenswert ist.'
+        ),
+        ('handeln', 'Handeln', 'action', 'quellen',
+            'Sinn kann durch Gestaltung, Arbeit, Fürsorge und gesellschaftliche '
+            'Praxis entstehen.'
+        ),
+        ('erfahrung', 'Erfahrung', 'concept', 'sinnbildung',
+            'Das unmittelbare Erleben bildet einen Ausgangspunkt der Sinnbildung.'
+        ),
+        ('deutung', 'Deutung', 'action', 'sinnbildung',
+            'Menschen interpretieren Erlebnisse und ordnen sie in Zusammenhänge ein.'
+        ),
+        ('entscheidung', 'Entscheidung', 'action', 'sinnbildung',
+            'Durch Entscheidungen werden Möglichkeiten ausgewählt und Prioritäten '
+            'gesetzt.'
+        ),
+        ('verantwortung', 'Verantwortung', 'concept', 'sinnbildung',
+            'Die Übernahme von Verantwortung kann Handlungen über das eigene '
+            'Interesse hinaus bedeutsam machen.'
+        ),
+        ('vorgefundener_sinn', 'Sinn entdecken', 'concept', 'spannungen',
+            'Die Auffassung, dass Sinn unabhängig vom Individuum besteht und entdeckt '
+            'werden kann.'
+        ),
+        ('geschaffener_sinn', 'Sinn schaffen', 'concept', 'spannungen',
+            'Die Auffassung, dass Menschen Sinn durch Deutung, Wahl und Handeln '
+            'hervorbringen.'
+        ),
+        ('leid', 'Leid', 'risk', 'spannungen',
+            'Verlust, Schmerz und Ungerechtigkeit können bisherige Sinnzusammenhänge '
+            'erschüttern.'
+        ),
+        ('absurditaet', 'Absurdität', 'concept', 'spannungen',
+            'Der mögliche Widerspruch zwischen menschlichem Sinnverlangen und einer '
+            'Welt ohne erkennbare letzte Antwort.'
+        ),
+        ('sinnlosigkeit', 'Sinnlosigkeit', 'concept', 'spannungen',
+            'Das Erleben fehlender Bedeutung, Richtung oder Verständlichkeit; nicht '
+            'zwingend der Beweis objektiver Sinnlosigkeit.'
+        ),
+    ]
+    nodes = [
+        {
+            "id": nid, "label": label, "kind": kind,
+            "summary": summary,
+            **({"group": group} if group else {}),
+        }
+        for nid, label, kind, group, summary in nodes_data
+    ]
+    pairs=[
+    ('bedeutsamkeit','sinn','Wert','association'),
+    ('kohaerenz','sinn','Verständlichkeit','association'),
+    ('orientierung','sinn','Richtung','association'),
+    ('beziehungen','bedeutsamkeit','stiften','flow'),
+    ('werte','orientierung','geben','flow'),
+    ('handeln','bedeutsamkeit','verwirklicht','flow'),
+    ('erfahrung','deutung','wird interpretiert','flow'),
+    ('deutung','kohaerenz','stellt her','flow'),
+    ('werte','entscheidung','leiten','flow'),
+    ('entscheidung','handeln','führt zu','flow'),
+    ('handeln','erfahrung','erzeugt','feedback'),
+    ('verantwortung','handeln','prägt','flow'),
+    ('beziehungen','verantwortung','begründen','association'),
+    ('deutung','geschaffener_sinn','ermöglicht','flow'),
+    ('vorgefundener_sinn','geschaffener_sinn','entdecken oder schaffen?','association'),
+    ('vorgefundener_sinn','sinn','als gegeben','association'),
+    ('geschaffener_sinn','sinn','als hervorgebracht','association'),
+    ('leid','kohaerenz','erschüttert','risk'),
+    ('leid','deutung','fordert heraus','feedback'),
+    ('absurditaet','vorgefundener_sinn','stellt infrage','risk'),
+    ('absurditaet','sinnlosigkeit','kann auslösen','risk'),
+    ('sinnlosigkeit','orientierung','schwächt','risk'),
+    ('sinnlosigkeit','deutung','kann erneute Suche anstoßen','feedback'),
+    ('verantwortung','sinn','kann begründen','association')]
+    return {
+        "schema_version": "schauwerk-representation-input.v1",
+        "id": "sinn_und_bedeutung",
+        "title": "Sinn – Was macht etwas bedeutsam?",
+        "purpose": (
+            "Philosophische Wissenskarte über die Dimensionen, Quellen und "
+            "Entstehung von Sinn sowie grundlegende Widersprüche zwischen "
+            "Sinnfindung, Sinnstiftung und Sinnlosigkeit."
+        ),
+        "intent": "knowledge_map",
+        "groups": groups,
+        "nodes": nodes,
+        "edges": [
+            {
+                "id": f"e{i:02d}",
+                "from": a,
+                "to": b,
+                "label": label,
+                "kind": kind,
+            }
+            for i, (a, b, label, kind) in enumerate(pairs, 1)
+        ],
+        "requirements": {},
+        "requested_formats": [],
+    }
+
+
+
+def test_reported_sinn_16_24_hub_has_unique_degree_and_theme_breadth() -> None:
+    """The user's newer Sinn model has degree 6 versus Deutung 5.
+
+    That is a unique thematic hub, even though the previous 1.5x dominance
+    threshold missed it. The weaker fallback must not reorder theme columns.
+    """
+    from schauwerk.visual.native_diagram import (
+        _knowledge_map_leading_node,
+        _layout,
+    )
+    from schauwerk.visual.representation import validate_representation_input
+
+    source = _reported_sinn_16_24_model()
+    assert len(source["nodes"]) == 16
+    assert len(source["edges"]) == 24
+    assert _knowledge_map_leading_node(source["nodes"], source["edges"]) is None
+    assert (
+        _knowledge_map_leading_node(
+            source["nodes"], source["edges"], allow_unique_max=True
+        )
+        == "sinn"
+    )
+    positions, regions, width, _ = _layout(validate_representation_input(source))
+    assert [region[0] for region in regions] == [
+        "dimensionen", "quellen", None, "sinnbildung", "spannungen",
+    ]
+    assert regions[2][1] == "Leitbegriff"
+    assert abs(positions["sinn"][0] + 125 - width / 2) < 150
+
+
+def test_reported_sinn_16_24_central_render_has_no_foreign_card_or_label_hits() -> None:
+    """A central hub is useful only if all paths and captions remain readable."""
+    from math import dist
+
+    from schauwerk.visual.native_diagram import (
+        _process_svg_path_hits_box,
+        _process_svg_stroke_segments,
+    )
+
+    source = _reported_sinn_16_24_model()
+    content = render_native_diagram(source)
+    root = ET.fromstring(content)
+    nodes = {
+        element.attrib["data-source-id"]: element
+        for element in root.iter()
+        if element.get("data-source-kind") == "node"
+    }
+    edges = _edges(root)
+    assert len(nodes) == 16 and len(edges) == 24
+
+    def rectangle(element: ET.Element) -> tuple[float, float, float, float]:
+        box = element.find(SVG + "rect")
+        assert box is not None
+        return tuple(
+            float(box.get(key, "0"))
+            for key in ("x", "y", "width", "height")
+        )
+
+    def overlaps(
+        left: tuple[float, float, float, float],
+        right: tuple[float, float, float, float],
+    ) -> bool:
+        return (
+            left[0] < right[0] + right[2]
+            and right[0] < left[0] + left[2]
+            and left[1] < right[1] + right[3]
+            and right[1] < left[1] + left[3]
+        )
+
+    cards = {key: rectangle(element) for key, element in nodes.items()}
+    labels = {key: rectangle(element) for key, element in edges.items()}
+    hub = cards["sinn"]
+    assert abs(hub[0] + hub[2] / 2 - float(root.get("width", "0")) / 2) < 150
+    relations = {edge["id"]: edge for edge in source["edges"]}
+
+    for edge_id, element in edges.items():
+        path = element.find(SVG + "path")
+        assert path is not None
+        for node_id, bounds in cards.items():
+            if node_id in {relations[edge_id]["from"], relations[edge_id]["to"]}:
+                continue
+            assert not _process_svg_path_hits_box(
+                path.get("d", ""), bounds, padding=0
+            ), (edge_id, node_id)
+        for bounds in cards.values():
+            assert not overlaps(labels[edge_id], bounds), edge_id
+        for other_id, other_bounds in labels.items():
+            if edge_id != other_id:
+                assert not overlaps(labels[edge_id], other_bounds), (
+                    edge_id, other_id,
+                )
+
+    path = edges["e08"].find(SVG + "path")
+    assert path is not None
+    segments = _process_svg_stroke_segments(path.get("d", ""))
+    assert segments
+    assert sum(
+        dist(start, end)
+        for segment in segments for start, end in zip(segment, segment[1:])
+    ) < 1500
+    assert content == render_native_diagram(copy.deepcopy(source))
+
+
+def test_reported_sinn_16_24_equal_degree_is_not_forced_into_the_center() -> None:
+    """A tie is ambiguous and must not receive an invented central concept."""
+    from schauwerk.visual.native_diagram import _knowledge_map_leading_node
+
+    model = _reported_sinn_16_24_model()
+    model["edges"].append({
+        "id": "e25",
+        "from": "deutung",
+        "to": "verantwortung",
+        "label": "verbindet",
+        "kind": "association",
+    })
+    assert (
+        _knowledge_map_leading_node(
+            model["nodes"], model["edges"], allow_unique_max=True
+        )
+        is None
+    )
