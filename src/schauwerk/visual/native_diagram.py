@@ -56,6 +56,7 @@ _NARRATIVE_FEEDBACK_BOTTOM_CLEARANCE = 20
 _NARRATIVE_FEEDBACK_LABEL_TARGET_GAP = 12.0
 _NARRATIVE_SINGLE_FEEDBACK_TOP_Y = _CONTENT_TOP - 20
 _KNOWLEDGE_MAP_GROUP_GAP = 92
+_KNOWLEDGE_MAP_COMPACT_NODE_LIMIT = 18
 _UNGROUPED_PROCESS_HORIZONTAL_GAP = 166
 _NON_PROCESS_ROW_GAP = 70
 _FEEDBACK_LABEL_LANE_STEP = 56
@@ -522,6 +523,13 @@ def _knowledge_map_ordered_columns(
         return columns
 
     order = [list(nodes) for _, _, nodes in columns]
+    # Small-map optimization is deliberately bounded by both work and
+    # previously accepted larger knowledge-map render revisions.
+    compact_proxy = (
+        sum(map(len, order)) <= _KNOWLEDGE_MAP_COMPACT_NODE_LIMIT
+        and len(edges) <= 64 and len(columns) <= 6
+        and max(map(len, order)) <= 8
+    )
     node_columns = {
         str(node["id"]): col_index
         for col_index, column in enumerate(order)
@@ -537,7 +545,7 @@ def _knowledge_map_ordered_columns(
         "authority": 2.0,
         "evidence": 1.8,
         "association": 1.25,
-        "feedback": 0.55,
+        "feedback": 1.5 if compact_proxy else 0.55,
         # Risk relations merit the same alignment priority as associations:
         # otherwise long highlighted hazards dominate with avoidable crossings.
         "risk": 1.25,
@@ -569,6 +577,19 @@ def _knowledge_map_ordered_columns(
     if not cross_group:
         return columns
 
+    # Compare all shared column intervals only for small maps; large maps
+    # retain the existing bounded same-pair crossing heuristic.
+    max_rows = max(map(len, order))
+    centered_hub_id = next(
+        (
+            str(members[0]["id"])
+            for group_id, label, members in columns
+            if group_id is None and label == "Leitbegriff"
+            and len(members) == 1 and max_rows >= 3
+        ),
+        None,
+    )
+
     # A within-group directed chain expresses reading order. Its original
     # relative order is semantic content, never expendable crossing budget.
     # Keep the original relation even when the input order runs backwards.
@@ -583,10 +604,20 @@ def _knowledge_map_ordered_columns(
     # reliable, cheap combinatorial crossing test. Their actual SVG routing
     # still owns obstacle avoidance and label clearance.
     crossing_pairs: list[tuple[str, str, str, str, float]] = []
+    interval_crossings: list[
+        tuple[int, int, str, str, int, int, str, str, float]
+    ] = []
     for index, (left, right, a, b, weight) in enumerate(cross_group):
         for other_left, other_right, c, d, other_weight in cross_group[index + 1:]:
-            if left == other_left and right == other_right and len({a, b, c, d}) == 4:
+            if len({a, b, c, d}) != 4:
+                continue
+            if left == other_left and right == other_right:
                 crossing_pairs.append((a, b, c, d, 12.0 * min(weight, other_weight)))
+            if compact_proxy and max(left, other_left) < min(right, other_right):
+                interval_crossings.append((
+                    left, right, a, b, other_left, other_right, c, d,
+                    16.0 * min(weight, other_weight),
+                ))
 
     def score() -> float:
         rows = {
@@ -594,33 +625,96 @@ def _knowledge_map_ordered_columns(
             for column in order
             for row, node in enumerate(column)
         }
+        if compact_proxy and centered_hub_id is not None:
+            rows[centered_hub_id] = 1
         if any(
             (rows[source_id] < rows[target_id]) != forward
             for source_id, target_id, forward in fixed_order
         ):
             return float("inf")
+        if compact_proxy and any(
+            node_columns[source_id] == node_columns[target_id]
+            and kind == "association"
+            and abs(original_rows[source_id] - original_rows[target_id]) == 1
+            and abs(rows[source_id] - rows[target_id]) != 1
+            for source_id, target_id, _weight, kind in links
+        ):
+            # Nearby thematic alternatives belong together, even if pulling
+            # them apart would reduce the straight-line crossing proxy.
+            return float("inf")
         cost = 0.0
         for node_id, row in rows.items():
-            # Keep independent or tied nodes close to the author's input order.
-            cost += 0.45 * abs(row - original_rows[node_id])
+            cost += (2.0 if compact_proxy else 0.45) * abs(
+                row - original_rows[node_id]
+            )
         for source_id, target_id, weight, kind in links:
             source_row, target_row = rows[source_id], rows[target_id]
             if node_columns[source_id] != node_columns[target_id]:
-                cost += weight * abs(source_row - target_row)
+                if compact_proxy:
+                    # A same-row cross-group feedback often needs a long
+                    # outer return rather than a short vertical local gutter.
+                    if kind == "feedback" and source_row == target_row:
+                        cost += 20.0
+                    cost += 0.012 * weight * math.hypot(
+                        (node_columns[source_id] - node_columns[target_id])
+                        * (_GROUP_WIDTH + _KNOWLEDGE_MAP_GROUP_GAP),
+                        (source_row - target_row) * (_NODE_HEIGHT + _ROW_GAP),
+                    )
+                else:
+                    cost += weight * abs(source_row - target_row)
             else:
-                cost += 0.25 * weight * abs(source_row - target_row)
+                gap = abs(source_row - target_row)
+                cost += 0.25 * weight * gap
+                if compact_proxy:
+                    cost += 4.0 * weight * max(0, gap - 1)
                 if kind in {"flow", "authority", "evidence"} and source_row >= target_row:
                     cost += 4.0 * weight
-        for a, b, c, d, weight in crossing_pairs:
-            if (rows[a] - rows[c]) * (rows[b] - rows[d]) < 0:
-                cost += weight
+        if compact_proxy:
+            for left, right, a, b, other_left, other_right, c, d, weight in interval_crossings:
+                start, end = max(left, other_left), min(right, other_right)
+                a_start = rows[a] + (rows[b] - rows[a]) * (start - left) / (right - left)
+                a_end = rows[a] + (rows[b] - rows[a]) * (end - left) / (right - left)
+                c_start = rows[c] + (rows[d] - rows[c]) * (
+                    (start - other_left) / (other_right - other_left)
+                )
+                c_end = rows[c] + (rows[d] - rows[c]) * (
+                    (end - other_left) / (other_right - other_left)
+                )
+                if (a_start - c_start) * (a_end - c_end) < 0:
+                    cost += weight
+        else:
+            for a, b, c, d, weight in crossing_pairs:
+                if (rows[a] - rows[c]) * (rows[b] - rows[d]) < 0:
+                    cost += weight
         return cost
 
     current_score = score()
     # Keep cost bounded on dense 128-node canvases: evaluate distant swaps
     # for short columns, adjacent swaps for larger columns. Every accepted
     # move strictly improves a deterministic score; ties preserve input order.
-    for sweep in range(1 if len(original_rows) > 80 else 3):
+    for sweep in range(10 if compact_proxy else (1 if len(original_rows) > 80 else 3)):
+        if compact_proxy:
+            # Apply the globally best swap before reconsidering any group.
+            # Per-group greedy sweeps can freeze an unnecessarily long route
+            # while optimizing another column prematurely.
+            best_move = None
+            best_score = current_score
+            for group_index, column in enumerate(order):
+                for left in range(len(column)):
+                    for right in range(left + 1, len(column)):
+                        column[left], column[right] = column[right], column[left]
+                        candidate_score = score()
+                        column[left], column[right] = column[right], column[left]
+                        if candidate_score < best_score - 1e-6:
+                            best_move = (group_index, left, right)
+                            best_score = candidate_score
+            if best_move is None:
+                break
+            group_index, left, right = best_move
+            column = order[group_index]
+            column[left], column[right] = column[right], column[left]
+            current_score = best_score
+            continue
         changed = False
         indices = range(len(order)) if sweep % 2 == 0 else range(len(order) - 1, -1, -1)
         for group_index in indices:
@@ -823,6 +917,14 @@ def _layout(
         for column, (group_id, label, column_nodes) in enumerate(columns):
             region_x = _PAGE_MARGIN + column * (group_width + group_gap)
             row_count = max(1, len(column_nodes))
+            centered_hub = (
+                model["intent"] == "knowledge_map"
+                and len(nodes) <= _KNOWLEDGE_MAP_COMPACT_NODE_LIMIT
+                and group_id is None and label == "Leitbegriff"
+                and row_count == 1 and maximum_rows >= 3
+            )
+            if centered_hub:
+                row_count = 2
             region_height = (
                 64
                 + row_count * _NODE_HEIGHT
@@ -835,7 +937,8 @@ def _layout(
             for row, node in enumerate(column_nodes):
                 positions[node["id"]] = (
                     region_x + (group_width - node_width) // 2,
-                    _CONTENT_TOP + 56 + row * (_NODE_HEIGHT + _ROW_GAP),
+                    _CONTENT_TOP + 56
+                    + (1 if centered_hub else row) * (_NODE_HEIGHT + _ROW_GAP),
                 )
         width = max(
             900,
@@ -7711,6 +7814,13 @@ def render_native_diagram(
 
     group_separator_y = 50 if intent == "knowledge_map" else 44
     for region_index, (group_id, label, x, y, region_width, region_height) in enumerate(regions):
+        if (
+            intent == "knowledge_map"
+            and len(model["nodes"]) <= _KNOWLEDGE_MAP_COMPACT_NODE_LIMIT
+            and group_id is None and label == "Leitbegriff"
+        ):
+            # A placement column does not create a fifth thematic group.
+            continue
         identity = (
             ' data-renderer-region="ungrouped"'
             if group_id is None
