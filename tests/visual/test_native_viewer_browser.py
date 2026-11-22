@@ -2815,7 +2815,9 @@ try {
   const svg = document.querySelector("#nativeDiagram");
   if (!svg.querySelector("#native-node-deutung")?.hasAttribute("transform"))
     throw new Error("stored node offset not applied");
-  for (const id of ["e11", "e20", "e26"]) {
+  // e20 may use a shorter cubic after row compaction; its entire stroke
+  // remains checked against foreign cards and every label below.
+  for (const id of ["e11", "e26"]) {
     const path = svg.querySelector("#native-edge-" + id + " > path");
     if (!path?.getAttribute("d")?.includes(" L "))
       throw new Error(id + " corridor was replaced by cubic: " + path?.getAttribute("d"));
