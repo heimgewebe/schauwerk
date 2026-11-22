@@ -1811,14 +1811,24 @@ function placeLiveEdgeConflict(edgeState, conflict) {
   }
 }
 function relocateLiveEdgeLabels() {
-  if (!documentMode) {
+  // Other native representation kinds keep their existing routing contract.
+  if (!documentMode && !knowledgeMapOverview) {
     refreshSharedLabelCutout();
     return;
   }
-  const padding = 8;
-  const blockers = nodeModelsAtLiveCoordinates()
-    .filter(node => node.type !== "group")
-    .map(node => [node.x, node.y, node.x + node.width, node.y + node.height]);
+  // Native representation cards also move while their unrelated relation
+  // labels remain at earlier source coordinates. Use the same collision
+  // solver as editable documents, with the real transformed SVG card bounds.
+  const padding = documentMode ? 8 : 2;
+  const frame = !documentMode ? svg.viewBox.baseVal : null;
+  const blockers = documentMode
+    ? nodeModelsAtLiveCoordinates()
+      .filter(node => node.type !== "group")
+      .map(node => [node.x, node.y, node.x + node.width, node.y + node.height])
+    : [...nodes.keys()]
+      .map(sourceId => liveBounds(sourceId))
+      .filter(Boolean)
+      .map(box => [box.x, box.y, box.x + box.width, box.y + box.height]);
   const reserved = [];
   for (const edgeState of edges.values()) {
     const box = edgeState.labelRect;
@@ -1828,9 +1838,19 @@ function relocateLiveEdgeLabels() {
     const x0 = edgeState.naturalLabelX ?? edgeState.baseLabelX;
     const y0 = edgeState.naturalLabelY ?? edgeState.baseLabelY;
     const occupied = [...blockers, ...reserved];
-    const intersects = (x, y) => occupied.some(b =>
-      x - halfW < b[2] + padding && x + halfW > b[0] - padding &&
-      y - halfH < b[3] + padding && y + halfH > b[1] - padding
+    const intersects = (x, y) => (
+      // A knowledge-map canvas cannot expand on node drag. Keep the entire
+      // relocated label inside its existing viewBox, not merely off a card.
+      (frame && (
+        x - halfW < frame.x + padding ||
+        x + halfW > frame.x + frame.width - padding ||
+        y - halfH < frame.y + padding ||
+        y + halfH > frame.y + frame.height - padding
+      )) ||
+      occupied.some(b =>
+        x - halfW < b[2] + padding && x + halfW > b[0] - padding &&
+        y - halfH < b[3] + padding && y + halfH > b[1] - padding
+      )
     );
     let x = x0, y = y0;
     if (intersects(x, y)) {
@@ -1866,6 +1886,9 @@ function relocateLiveEdgeLabels() {
     placeLiveLabel(edgeState, x, y);
     reserved.push([x - halfW, y - halfH, x + halfW, y + halfH]);
   }
+  // Every moved representation label changes a cutout hole. Refresh only
+  // after the final locations are settled, never before collision resolution.
+  if (!documentMode) refreshSharedLabelCutout();
 }
 
 function previouslyRoutedEdges(edgeId) {
@@ -2006,17 +2029,16 @@ function nudgedKnowledgeLabel(edge, candidate) {
   }
 }
 
-function knowledgePathAvoidsCards(edge, candidate, labelX, labelY) {
+function knowledgePathAvoidsCards(edge, candidate) {
+  // Certify the stroke, not its provisional label center. Every live label
+  // is independently moved away from cards in relocateLiveEdgeLabels().
+
   const source = edge.path.getAttribute("d") || "";
   edge.path.setAttribute("d", candidate);
   try {
     const length = edge.path.getTotalLength();
     if (!Number.isFinite(length) || length <= 0) return false;
     const bounds = edge.path.getBBox();
-    const labelW = Number(edge.labelRect.getAttribute("width"));
-    const labelH = Number(edge.labelRect.getAttribute("height"));
-    if (!Number.isFinite(labelX) || !Number.isFinite(labelY)
-      || !(labelW > 0 && labelH > 0)) return false;
     const foreign = [];
     for (const [id] of nodes) {
       const card = liveBounds(id);
@@ -2025,8 +2047,6 @@ function knowledgePathAvoidsCards(edge, candidate, labelX, labelY) {
         minX: card.x + 2, maxX: card.x + card.width - 2,
         minY: card.y + 2, maxY: card.y + card.height - 2,
       };
-      if (labelX + labelW / 2 > r.minX && labelX - labelW / 2 < r.maxX
-        && labelY + labelH / 2 > r.minY && labelY - labelH / 2 < r.maxY) return false;
       // The first/last exact endpoint may touch its own card boundary.
       // No other part of a route may travel through either endpoint card.
       if (bounds.x < r.maxX && bounds.x + bounds.width > r.minX
@@ -2099,7 +2119,11 @@ function updateEdgeGeometry(edgeId) {
   }
   if (
     fromOffset.x === 0 && fromOffset.y === 0 &&
-    toOffset.x === 0 && toOffset.y === 0
+    toOffset.x === 0 && toOffset.y === 0 &&
+    // An unrelated node can move onto an otherwise unchanged base route.
+    // In a bounded knowledge map, re-certify the path against live cards.
+    (!knowledgeMapOverview || edges.size > 40 ||
+      knowledgePathAvoidsCards(edgeState, edgeState.basePath))
   ) {
     edgeState.path.setAttribute("d", edgeState.basePath);
     edgeState.hitPath.setAttribute("d", edgeState.basePath);
@@ -2115,9 +2139,7 @@ function updateEdgeGeometry(edgeId) {
     const anchoredLabel = anchored ? nudgedKnowledgeLabel(edgeState, anchored) : null;
     if (
       anchored && anchoredLabel &&
-      knowledgePathAvoidsCards(
-        edgeState, anchored, anchoredLabel.x, anchoredLabel.y,
-      )
+      knowledgePathAvoidsCards(edgeState, anchored)
     ) {
       edgeState.path.setAttribute("d", anchored);
       edgeState.hitPath.setAttribute("d", anchored);
@@ -2151,9 +2173,8 @@ function updateEdgeGeometry(edgeId) {
             toSide: edgeState.toSide,
           })
         : null;
-      if (alternative?.collisionFree && knowledgePathAvoidsCards(
-        edgeState, alternative.path, alternative.labelX, alternative.labelY,
-      )) {
+      if (alternative?.collisionFree &&
+          knowledgePathAvoidsCards(edgeState, alternative.path)) {
         edgeState.path.setAttribute("d", alternative.path);
         edgeState.hitPath.setAttribute("d", alternative.path);
         edgeState.naturalLabelX = alternative.labelX;
@@ -3844,8 +3865,15 @@ function finishPointer(event) {
         } else {
           setStatus("Position geändert · Dokument unverändert");
         }
-      } else if (persistOverrides()) {
-        setStatus("Position lokal gespeichert");
+      } else {
+        const stored = persistOverrides();
+        // A moved node can obstruct an unrelated edge even if local storage
+        // is unavailable. Certify the bounded map once on pointer release.
+        if (knowledgeMapOverview && edges.size <= 40) {
+          for (const edgeId of edges.keys()) updateEdgeGeometry(edgeId);
+          relocateLiveEdgeLabels();
+        }
+        if (stored) setStatus("Position lokal gespeichert");
       }
     }
     gesture = null;

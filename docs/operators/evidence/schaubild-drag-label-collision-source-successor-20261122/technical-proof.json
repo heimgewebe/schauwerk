@@ -1,0 +1,43 @@
+{
+  "base_revision": "7cc2f0bf1dbbd94bdf07779983c322547dd229a6",
+  "base_source_bindings": {
+    "src/schauwerk/resources/native_viewer/assets.py": "d48283a4034b8514e164484060a559b404b43a1337fe6599296ffb3948571046",
+    "tests/visual/test_native_viewer.py": "eba5d42c3fee4793f788e4aa099b9d2365e5761ba1711873900fb7a05a187a3d",
+    "tests/visual/test_native_viewer_browser.py": "6ded6a8956a44840f40385d0b104950d527bc9e66ddcd095db0497d484c54257"
+  },
+  "consumer_runtime": "not_integrated",
+  "does_not_establish": [
+    "historical_visual_acceptance_inherited",
+    "production_deployed",
+    "physical_ipad_safari_acceptance"
+  ],
+  "evidence_digest": "15af950879cb98ba79242d9fa62707ce70b8bc1ffa547d70317fe11e077849d4",
+  "implementation_commit": "0757a3e3da19b3108959a49ea147a3a5a4738794",
+  "predecessor_technical_proof": {
+    "evidence_digest": "601e9522fad82e20be07f68a48ad00edf292b950264b9c151adc80bb4da64d0c",
+    "path": "docs/operators/evidence/schaubild-drag-gutter-source-successor-20261121/technical-proof.json",
+    "sha256": "3f26fa614b149d8df40bcbe37972fe8e13479130686916181a28b64a87fc22f5"
+  },
+  "schema_version": "schauwerk-schaubild-drag-label-collision-source-successor.v1",
+  "source_bindings": {
+    "src/schauwerk/resources/native_viewer/assets.py": "1809f40fba877ee807c314810fc7c3db309889ab077a31578df1b43c418ecd4b",
+    "tests/visual/test_native_viewer.py": "cf39438a85055e73c747d8e99df4316c034d5206adc360ce87e5ac806d915101",
+    "tests/visual/test_native_viewer_browser.py": "87eb9abb0edf9b12184d280f0631820db280798362e1bc80da433621a4ab14f7"
+  },
+  "source_mode": "source-code-successor",
+  "source_pr": 270,
+  "source_repository": "heimgewebe/schauwerk",
+  "status": "technical_candidate_only",
+  "validation": {
+    "chrome_blocked_storage_pointer_regression": "passed",
+    "chrome_large_move_regression": "passed_with_16_24_and_foreign_card_checks",
+    "chrome_svg_viewbox_label_boundary": "passed_red_green",
+    "exact_head_ci": "pending",
+    "python_compilation": "passed",
+    "ruff_all_project": "passed",
+    "sinn_and_native_visual_suite": "503 passed",
+    "sinn_edge_count": 24,
+    "sinn_node_count": 16
+  },
+  "visual_acceptance": "not_inherited"
+}
