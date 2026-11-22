@@ -3068,6 +3068,77 @@ try {
         )
 
 
+
+
+def test_knowledge_map_relocated_labels_remain_inside_svg_viewbox(
+    tmp_path: Path,
+) -> None:
+    """A shifted label must neither cover a node nor escape the SVG canvas."""
+    chrome = _chrome()
+    if chrome is None:
+        _skip_or_fail_browser("Chrome unavailable for viewBox label boundary")
+        raise AssertionError("unreachable")
+
+    app = ASSETS["app.js"]
+    start = app.index("function relocateLiveEdgeLabels() {")
+    end = app.index("function previouslyRoutedEdges(", start)
+    solver = app[start:end]
+    output = tmp_path / "label-boundary.html"
+    output.write_text(
+        """<!doctype html><html><meta charset="utf-8"><body>
+<svg id="canvas" xmlns="http://www.w3.org/2000/svg"
+     width="500" height="240" viewBox="0 0 500 240">
+  <rect id="card" x="200" y="0" width="100" height="100"/>
+  <rect id="label" x="200" y="5" width="100" height="30"/>
+</svg>
+<script>
+const documentMode = false, knowledgeMapOverview = true;
+const svg = document.getElementById("canvas");
+const card = document.getElementById("card");
+const label = document.getElementById("label");
+const nodes = new Map([["node", card]]);
+const edge = {labelRect:label, baseLabelX:250, baseLabelY:20,
+  naturalLabelX:250, naturalLabelY:20,
+  element:document.createElement("div")};
+const edges = new Map([["edge", edge]]);
+function liveBounds() {return {x:200,y:0,width:100,height:100};}
+function nodeModelsAtLiveCoordinates() {return [];}
+function placeLiveLabel(state,x,y) {
+  label.setAttribute("transform", "translate("+(x-250)+" "+(y-20)+")");
+}
+function refreshSharedLabelCutout() {}
+""" + solver + """
+try {
+  relocateLiveEdgeLabels();
+  const labelBox = label.getBoundingClientRect();
+  const canvas = svg.getBoundingClientRect();
+  const cardBox = card.getBoundingClientRect();
+  if (labelBox.left < canvas.left || labelBox.top < canvas.top ||
+      labelBox.right > canvas.right || labelBox.bottom > canvas.bottom)
+    throw new Error("label escaped viewBox");
+  if (Math.min(labelBox.right,cardBox.right)-Math.max(labelBox.left,cardBox.left)>1 &&
+      Math.min(labelBox.bottom,cardBox.bottom)-Math.max(labelBox.top,cardBox.top)>1)
+    throw new Error("label still overlaps card");
+  if (edge.element.dataset.labelConflict === "true")
+    throw new Error("label marked conflict despite clear location");
+  document.documentElement.dataset.boundaryLabel="pass";
+} catch(e) {
+  document.documentElement.dataset.boundaryLabel="fail";
+  document.documentElement.dataset.boundaryError=String(e.message||e);
+}
+</script></body></html>
+""",
+        encoding="utf-8",
+    )
+    proc = subprocess.run(
+        [chrome, "--headless=new", "--no-first-run", "--no-sandbox",
+         "--disable-gpu", "--disable-dev-shm-usage", "--dump-dom",
+         output.as_uri()],
+        capture_output=True, text=True, timeout=30, check=False,
+    )
+    assert proc.returncode == 0, proc.stderr[-1200:]
+    assert 'data-boundary-label="pass"' in proc.stdout, proc.stdout[-1600:]
+
 def test_knowledge_map_paths_must_not_pierce_own_endpoint_cards(
     tmp_path: Path,
 ) -> None:

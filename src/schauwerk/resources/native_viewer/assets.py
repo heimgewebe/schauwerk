@@ -1820,6 +1820,7 @@ function relocateLiveEdgeLabels() {
   // labels remain at earlier source coordinates. Use the same collision
   // solver as editable documents, with the real transformed SVG card bounds.
   const padding = documentMode ? 8 : 2;
+  const frame = !documentMode ? svg.viewBox.baseVal : null;
   const blockers = documentMode
     ? nodeModelsAtLiveCoordinates()
       .filter(node => node.type !== "group")
@@ -1837,9 +1838,19 @@ function relocateLiveEdgeLabels() {
     const x0 = edgeState.naturalLabelX ?? edgeState.baseLabelX;
     const y0 = edgeState.naturalLabelY ?? edgeState.baseLabelY;
     const occupied = [...blockers, ...reserved];
-    const intersects = (x, y) => occupied.some(b =>
-      x - halfW < b[2] + padding && x + halfW > b[0] - padding &&
-      y - halfH < b[3] + padding && y + halfH > b[1] - padding
+    const intersects = (x, y) => (
+      // A knowledge-map canvas cannot expand on node drag. Keep the entire
+      // relocated label inside its existing viewBox, not merely off a card.
+      (frame && (
+        x - halfW < frame.x + padding ||
+        x + halfW > frame.x + frame.width - padding ||
+        y - halfH < frame.y + padding ||
+        y + halfH > frame.y + frame.height - padding
+      )) ||
+      occupied.some(b =>
+        x - halfW < b[2] + padding && x + halfW > b[0] - padding &&
+        y - halfH < b[3] + padding && y + halfH > b[1] - padding
+      )
     );
     let x = x0, y = y0;
     if (intersects(x, y)) {
