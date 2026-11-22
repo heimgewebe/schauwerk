@@ -56,6 +56,7 @@ _NARRATIVE_FEEDBACK_BOTTOM_CLEARANCE = 20
 _NARRATIVE_FEEDBACK_LABEL_TARGET_GAP = 12.0
 _NARRATIVE_SINGLE_FEEDBACK_TOP_Y = _CONTENT_TOP - 20
 _KNOWLEDGE_MAP_GROUP_GAP = 92
+_KNOWLEDGE_MAP_COMPACT_NODE_LIMIT = 18
 _UNGROUPED_PROCESS_HORIZONTAL_GAP = 166
 _NON_PROCESS_ROW_GAP = 70
 _FEEDBACK_LABEL_LANE_STEP = 56
@@ -522,6 +523,13 @@ def _knowledge_map_ordered_columns(
         return columns
 
     order = [list(nodes) for _, _, nodes in columns]
+    # Small-map optimization is deliberately bounded by both work and
+    # previously accepted larger knowledge-map render revisions.
+    compact_proxy = (
+        sum(map(len, order)) <= _KNOWLEDGE_MAP_COMPACT_NODE_LIMIT
+        and len(edges) <= 64 and len(columns) <= 6
+        and max(map(len, order)) <= 8
+    )
     node_columns = {
         str(node["id"]): col_index
         for col_index, column in enumerate(order)
@@ -537,7 +545,7 @@ def _knowledge_map_ordered_columns(
         "authority": 2.0,
         "evidence": 1.8,
         "association": 1.25,
-        "feedback": 1.5,
+        "feedback": 1.5 if compact_proxy else 0.55,
         # Risk relations merit the same alignment priority as associations:
         # otherwise long highlighted hazards dominate with avoidable crossings.
         "risk": 1.25,
@@ -571,8 +579,6 @@ def _knowledge_map_ordered_columns(
 
     # Compare all shared column intervals only for small maps; large maps
     # retain the existing bounded same-pair crossing heuristic.
-    compact_proxy = (len(links) <= 64 and len(columns) <= 6
-                     and max(map(len, order)) <= 8)
     max_rows = max(map(len, order))
     centered_hub_id = next(
         (
@@ -619,7 +625,7 @@ def _knowledge_map_ordered_columns(
             for column in order
             for row, node in enumerate(column)
         }
-        if centered_hub_id is not None:
+        if compact_proxy and centered_hub_id is not None:
             rows[centered_hub_id] = 1
         if any(
             (rows[source_id] < rows[target_id]) != forward
@@ -913,6 +919,7 @@ def _layout(
             row_count = max(1, len(column_nodes))
             centered_hub = (
                 model["intent"] == "knowledge_map"
+                and len(nodes) <= _KNOWLEDGE_MAP_COMPACT_NODE_LIMIT
                 and group_id is None and label == "Leitbegriff"
                 and row_count == 1 and maximum_rows >= 3
             )
@@ -7807,7 +7814,11 @@ def render_native_diagram(
 
     group_separator_y = 50 if intent == "knowledge_map" else 44
     for region_index, (group_id, label, x, y, region_width, region_height) in enumerate(regions):
-        if intent == "knowledge_map" and group_id is None and label == "Leitbegriff":
+        if (
+            intent == "knowledge_map"
+            and len(model["nodes"]) <= _KNOWLEDGE_MAP_COMPACT_NODE_LIMIT
+            and group_id is None and label == "Leitbegriff"
+        ):
             # A placement column does not create a fifth thematic group.
             continue
         identity = (
