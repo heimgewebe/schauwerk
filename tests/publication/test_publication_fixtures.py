@@ -30,6 +30,59 @@ _CURRENT_AI_HANDOFF_SOURCES = {
 }
 
 
+def _drag_label_collision_source_successor_proof() -> dict:
+    """A newer technical candidate supersedes only source bytes, not old acceptance."""
+    path = (
+        ROOT / "docs/operators/evidence/"
+        "schaubild-drag-label-collision-source-successor-20261122/"
+        "technical-proof.json"
+    )
+    proof = json.loads(path.read_text(encoding="utf-8"))
+    assert proof["schema_version"] == (
+        "schauwerk-schaubild-drag-label-collision-source-successor.v1"
+    )
+    assert proof["source_pr"] == 270
+    assert proof["base_revision"] == "7cc2f0bf1dbbd94bdf07779983c322547dd229a6"
+    assert proof["status"] == "technical_candidate_only"
+    assert proof["visual_acceptance"] == "not_inherited"
+    assert proof["consumer_runtime"] == "not_integrated"
+    assert proof["evidence_digest"] == digest_mapping(proof, "evidence_digest")
+    prior = proof["predecessor_technical_proof"]
+    raw = (ROOT / prior["path"]).read_bytes()
+    assert hashlib.sha256(raw).hexdigest() == prior["sha256"]
+    predecessor = json.loads(raw)
+    assert predecessor["evidence_digest"] == prior["evidence_digest"]
+    assert predecessor["evidence_digest"] == digest_mapping(
+        predecessor, "evidence_digest"
+    )
+    assert proof["base_source_bindings"] == {
+        **{
+            name: predecessor["source_bindings"][name]
+            for name in proof["source_bindings"]
+            if name in predecessor["source_bindings"]
+        },
+        "tests/visual/test_native_viewer.py":
+            "eba5d42c3fee4793f788e4aa099b9d2365e5761ba1711873900fb7a05a187a3d",
+    }
+    for name, digest in proof["source_bindings"].items():
+        assert digest != proof["base_source_bindings"][name]
+        assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == digest, name
+    assert "historical_visual_acceptance_inherited" in proof["does_not_establish"]
+    return proof
+
+
+def _after_drag_label_collision_source(path: str, historical_sha: str) -> str:
+    """Only the exact current source successor overrides an older binding."""
+    proof = _drag_label_collision_source_successor_proof()
+    if path not in proof["source_bindings"]:
+        return historical_sha
+    assert historical_sha in {
+        proof["base_source_bindings"][path],
+        proof["source_bindings"][path],
+    }, path
+    return proof["source_bindings"][path]
+
+
 def _drag_gutter_source_successor_proof() -> dict:
     """Current candidate binds exact new bytes without rewriting old visual proofs."""
     proof = json.loads(
@@ -56,7 +109,10 @@ def _drag_gutter_source_successor_proof() -> dict:
     assert set(proof["source_bindings"]) == set(proof["base_source_bindings"])
     for path, expected in proof["source_bindings"].items():
         assert expected != proof["base_source_bindings"][path]
-        assert hashlib.sha256((ROOT / path).read_bytes()).hexdigest() == expected, path
+        successor = _drag_label_collision_source_successor_proof()["source_bindings"]
+        assert hashlib.sha256((ROOT / path).read_bytes()).hexdigest() == (
+            successor.get(path, expected)
+        ), path
     assert proof["validation"]["node_count"] == 19
     assert proof["validation"]["edge_count"] == 26
     assert "production_deployed" in proof["does_not_establish"]
@@ -66,7 +122,8 @@ def _drag_gutter_source_successor_proof() -> dict:
 def _newest_proven_viewer_sha(path: str, historical_sha: str) -> str:
     """Only the explicitly pinned source successor may override old digest expectations."""
     proof = _drag_gutter_source_successor_proof()
-    return proof["source_bindings"].get(path, historical_sha)
+    successor = _drag_label_collision_source_successor_proof()["source_bindings"]
+    return successor.get(path, proof["source_bindings"].get(path, historical_sha))
 
 
 def _tablet_reading_source_successor_proof() -> dict:
@@ -1149,8 +1206,12 @@ def _current_source_digest(path: str, previous_sha256: str) -> str:
     successor = _vector_pdf_focus_source_successor_proof()
     if path in successor["source_bindings"]:
         assert successor["base_source_bindings"][path] == latest, path
-        return _source_after_relevance_filter(path, successor["source_bindings"][path])
-    return _source_after_readable_router(path, latest)
+        return _after_drag_label_collision_source(
+            path, _source_after_relevance_filter(path, successor["source_bindings"][path])
+        )
+    return _after_drag_label_collision_source(
+        path, _source_after_readable_router(path, latest)
+    )
 
 
 def test_native_edge_budget_source_successor_binds_exact_current_bytes() -> None:

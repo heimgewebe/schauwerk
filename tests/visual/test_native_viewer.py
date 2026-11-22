@@ -376,7 +376,8 @@ def test_native_viewer_build_is_deterministic_and_keeps_semantic_truth_read_only
     assert 'classList.toggle("embedded-native-viewer", embeddedNativeViewer)' in app
     assert "if (documentEditorHosted)" in app
     assert "Bearbeiten in Schaubild" in app
-    assert "else if (persistOverrides())" in app
+    assert "const stored = persistOverrides();" in app
+    assert 'if (stored) setStatus("Position lokal gespeichert");' in app
     assert 'event.ctrlKey || event.metaKey' in app
     assert 'view = panBy(view, -event.deltaX * modeScale, -event.deltaY * modeScale);' in app
     assert 'event.key === "Enter" || event.key === " "' in app
