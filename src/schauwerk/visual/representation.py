@@ -1500,6 +1500,23 @@ def _digest_open_fd(descriptor: int, expected_size: int) -> str | None:
     return digest.hexdigest()
 
 
+def _bound_directory_names(directory_fd: int) -> set[str]:
+    """Enumerate from a fresh handle to the same pinned directory inode.
+
+    On some Linux filesystems, reusing a directory FD opened before artifact
+    creation yields a stale empty listing despite valid bound file handles.
+    Reopening "." relative to that FD refreshes enumeration without trusting
+    a mutable pathname or relaxing exact-name checks.
+    """
+    fresh_fd = os.open(".", _directory_open_flags(), dir_fd=directory_fd)
+    try:
+        if not _same_path_identity(os.fstat(directory_fd), os.fstat(fresh_fd)):
+            raise OSError(errno.ESTALE, "bound directory inode changed")
+        return set(os.listdir(fresh_fd))
+    finally:
+        _close_fd_quietly(fresh_fd)
+
+
 def _verify_bound_artifacts(
     directory_fd: int, owned_fds: _OwnedArtifactLedger
 ) -> bool:
@@ -1507,7 +1524,7 @@ def _verify_bound_artifacts(
     if expected_names != set(owned_fds.integrity):
         return False
     try:
-        observed_names = set(os.listdir(directory_fd))
+        observed_names = _bound_directory_names(directory_fd)
     except OSError:
         return False
     if observed_names != expected_names:
@@ -1545,7 +1562,7 @@ def _verify_bound_artifacts(
         ):
             return False
     try:
-        return set(os.listdir(directory_fd)) == expected_names
+        return _bound_directory_names(directory_fd) == expected_names
     except OSError:
         return False
 
@@ -1589,7 +1606,7 @@ def _cleanup_bound_directory(
         namespace_clean = _same_path_identity(expected, linked)
 
     try:
-        observed_names = set(os.listdir(directory_fd))
+        observed_names = _bound_directory_names(directory_fd)
     except OSError:
         namespace_clean = False
         observed_names = set()
