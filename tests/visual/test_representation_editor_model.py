@@ -445,7 +445,11 @@ try {
     await until(()=>dialog.open && row("Gruppe · g"),"canonical edit form missing");
     const frameDigest=()=>document.querySelector("#editorFrame")
       ?.contentDocument?.querySelector("#nativeDiagram")?.dataset?.inputDigest;
-    await until(()=>Boolean(frameDigest()),"Native viewer old digest missing",1200);
+    // The SVG may be parsed before the native module has initialized its view.
+    await until(()=>Boolean(frameDigest()) &&
+      !!document.querySelector("#editorFrame")?.contentDocument
+        ?.querySelector("#nativeCanvas")?.style.transform,
+      "Native viewer old digest and initial fit missing",1200);
     const oldDigest=frameDigest();
     localStorage.setItem("schauwerk.native-viewer.layout.v1."+oldDigest,
       JSON.stringify({a:{x:37,y:19},b:{x:6,y:-13}}));
@@ -489,7 +493,7 @@ try {
     if (retryMode.has("quota")) {
       await until(() => dialog.open &&
         !document.querySelector("#contentSaveButton").disabled &&
-        frameDigest() !== oldDigest,
+        Boolean(frameDigest()) && frameDigest() !== oldDigest,
         "Successful render with failed draft write did not leave the editor open", 1200);
       Storage.prototype.setItem = originalDraftSetItem;
       const intermediateDigest = frameDigest();
@@ -501,7 +505,8 @@ try {
       change(field(row("Schaubild"), "Titel", "input"), "Nach Quota", "input");
       document.querySelector("#contentSaveButton").click();
       try {
-        await until(() => !dialog.open && frameDigest() !== intermediateDigest,
+        await until(() => !dialog.open && Boolean(frameDigest()) &&
+          frameDigest() !== intermediateDigest,
           "Second save after quota did not update native rendering", 1200);
       } catch (error) {
         throw new Error("Quota second save state: " + JSON.stringify({

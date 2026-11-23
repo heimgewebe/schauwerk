@@ -832,6 +832,16 @@ def test_editor_exports_the_current_edited_canvas_as_working_offline_html(tmp_pa
         cdp.wait_for("!document.querySelector('#offlineHtmlButton').hidden", "offline button offered for Canvas")
         cdp.wait_for("!document.querySelector('#offlineHtmlButton').disabled", "offline button enabled")
 
+        # The export button can be enabled before the hosted viewer publishes
+        # its initial document state. The parent clears inert only on that ACK.
+        cdp.wait_for(
+            "!document.querySelector('#editorFrame').inert"
+            " && document.querySelector('#editorFrame').contentDocument?.readyState === 'complete'"
+            " && !!document.querySelector('#editorFrame').contentDocument"
+            ".querySelector('#nativeCanvas')?.style.transform",
+            "native viewer startup acknowledged before drag", 30,
+        )
+
         # Edit the live document: drag node "a" in the hosted viewer.
         cdp.evaluate(
             """(async () => {

@@ -1175,6 +1175,25 @@ def test_schaubild_vector_pdf_focus_source_successor_is_digest_bound() -> None:
     assert proof["visual_acceptance"]["physical_ipad_safari"] == "not_tested"
 
 
+def _after_browser_readiness_source(path: str, historical_sha: str) -> str:
+    """Bind the two revised test harnesses, not a new visual acceptance."""
+    revisions = {
+        "tests/visual/test_native_offline_html.py": (
+            "6103566cfc00b797ed32b31b9e154f1ed05c098b5bd491dd6fb4034c8707f248",
+            "99bca919997c43a0783a67566b61bb49a1998f253bd75479d87ac94e4d3e8b1f",
+        ),
+        "tests/visual/test_representation_editor_model.py": (
+            "b378f510de719b215302e557ea6748eeaadcaccafaadf5eeae37fa7b308cc9f6",
+            "dbdb8d4377a5992f0e6b22259def069eeadd7e39cf0616ed99b84517970d9377",
+        ),
+    }
+    if path not in revisions:
+        return historical_sha
+    previous, current = revisions[path]
+    assert historical_sha == previous, path
+    return current
+
+
 def _current_source_digest(path: str, previous_sha256: str) -> str:
     """Follow only digest-verified successors; earlier proof bytes are immutable."""
     crossing = _crossing_source_successor_proof()
@@ -1206,12 +1225,11 @@ def _current_source_digest(path: str, previous_sha256: str) -> str:
     successor = _vector_pdf_focus_source_successor_proof()
     if path in successor["source_bindings"]:
         assert successor["base_source_bindings"][path] == latest, path
-        return _after_drag_label_collision_source(
-            path, _source_after_relevance_filter(path, successor["source_bindings"][path])
-        )
-    return _after_drag_label_collision_source(
-        path, _source_after_readable_router(path, latest)
-    )
+        latest = _source_after_relevance_filter(path, successor["source_bindings"][path])
+    else:
+        latest = _source_after_readable_router(path, latest)
+    latest = _after_drag_label_collision_source(path, latest)
+    return _after_browser_readiness_source(path, latest)
 
 
 def test_native_edge_budget_source_successor_binds_exact_current_bytes() -> None:
@@ -15633,7 +15651,9 @@ def test_schaubild_full_editing_source_supersession_is_technically_bound() -> No
     assert set(focus_proof["source_bindings"]) == focus_paths
     for name, digest in focus_proof["source_bindings"].items():
         assert focus_proof["base_source_bindings"][name] == knowledge_map["source_bindings"][name]
-        assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == digest
+        assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == (
+            _after_browser_readiness_source(name, digest)
+        )
     assert focus_proof["validation"]["focused_pytest_passed"] == 21
     assert "production_deployment" in focus_proof["does_not_establish"]
     for name, sha in knowledge_map["source_bindings"].items():
