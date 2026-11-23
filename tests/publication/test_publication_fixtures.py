@@ -2291,6 +2291,17 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
         "tests/visual/test_standalone_editor.py",
     } | editor_superseded_files
     for name, expected in runtime_successor["source_bindings"].items():
+        if name == "src/schauwerk/visual/representation.py":
+            # September's immutable technical evidence still binds its old
+            # bytes. The FD-bound staging repair is a new tested revision,
+            # not an inherited visual acceptance of that older source.
+            assert expected == (
+                "a16ee84215022a4843528c8d22b598aba8c4d3300ca117d46ef4f3dc7e772cbc"
+            )
+            assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == (
+                "6e53f09f0c68e25c721203c2a879092a55d6af5920e058015749434dd62716fb"
+            )
+            continue
         if name not in (
             drawio_native_superseded_files
             | smoke_pipefail_superseded_files

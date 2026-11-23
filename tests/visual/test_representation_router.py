@@ -796,7 +796,9 @@ def test_private_staging_validation_never_deletes_substituted_name(
     def substitute_before_validation(left: os.stat_result, right: os.stat_result) -> bool:
         if not state:
             staging_name = next(
-                name for name in os.listdir(parent_fd) if name.startswith(".package.tmp-")
+                # The test-owned parent path has a fresh directory cursor; the FD
+                # opened before mkdir can expose an obsolete empty listing.
+                name for name in os.listdir(parent) if name.startswith(".package.tmp-")
             )
             moved_name = ".moved-created-staging"
             os.rename(
@@ -1370,6 +1372,47 @@ def test_final_readback_rejects_artifact_mutation_after_parent_fsync(
     assert mutated is True
     assert target.is_dir()
     assert (target / "input.json").stat().st_size == 0
+
+
+
+def test_bound_verifier_refreshes_directory_enumeration_without_accepting_foreign_entries(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A reused directory FD may present an old empty listing on NixOS."""
+    directory_fd = os.open(tmp_path, representation._directory_open_flags())
+    owned_fds = representation._OwnedArtifactLedger()
+    try:
+        assert os.listdir(directory_fd) == []
+        representation._write_text(
+            directory_fd, "owned.txt", "compiler-owned", owned_fds=owned_fds
+        )
+        original_listdir = os.listdir
+
+        def stale_original_fd(descriptor: int) -> list[str]:
+            # Force the observed stale first read deterministically, even on
+            # filesystems that happen not to exhibit it.
+            if descriptor == directory_fd:
+                return []
+            return original_listdir(descriptor)
+
+        monkeypatch.setattr(representation.os, "listdir", stale_original_fd)
+
+        assert representation._verify_bound_artifacts(directory_fd, owned_fds)
+        foreign_fd = os.open(
+            "foreign.txt", os.O_CREAT | os.O_EXCL | os.O_WRONLY, 0o600,
+            dir_fd=directory_fd,
+        )
+        try:
+            os.write(foreign_fd, b"unowned")
+            os.fsync(foreign_fd)
+        finally:
+            os.close(foreign_fd)
+        # Reopening must not weaken the exact-name requirement.
+        assert not representation._verify_bound_artifacts(directory_fd, owned_fds)
+    finally:
+        for descriptor in owned_fds.values():
+            os.close(descriptor)
+        os.close(directory_fd)
 
 
 def test_package_verifies_bound_artifacts_at_all_three_publication_gates(
