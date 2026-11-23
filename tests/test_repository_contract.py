@@ -10,6 +10,10 @@ from schauwerk import __version__
 from schauwerk.registry_runtime import registry_show, registry_status
 from schauwerk.registry_validation import validate_registry
 
+# Preserve the isolated Python candidate PATH while supplying the shell used by
+# Make's recipes explicitly (NixOS may not expose sh through that test PATH).
+_MAKE_SHELL = f"SHELL={shutil.which('sh') or '/bin/sh'}"
+
 
 def test_version_is_initial_release() -> None:
     assert __version__ == "0.1.0"
@@ -68,6 +72,7 @@ def test_make_validation_uses_one_supported_python_toolchain(tmp_path: Path) -> 
             str(root / "Makefile"),
             "--no-print-directory",
             "python-version-check",
+            _MAKE_SHELL,
         ],
         cwd=tmp_path,
         check=False,
@@ -118,6 +123,7 @@ def test_make_skips_system_probe_when_python_is_already_selected(tmp_path: Path)
             str(root / "Makefile"),
             "--no-print-directory",
             "python-version-check",
+            _MAKE_SHELL,
         ]
         if mode == "override":
             args.append(f"PYTHON={selected_python}")
@@ -167,6 +173,7 @@ def test_make_prefers_active_supported_python_over_side_install(tmp_path: Path) 
             str(root / "Makefile"),
             "--no-print-directory",
             "python-version-check",
+            _MAKE_SHELL,
         ],
         cwd=tmp_path,
         check=False,
@@ -210,6 +217,7 @@ def test_make_skips_unusable_version_manager_shim(tmp_path: Path) -> None:
             str(root / "Makefile"),
             "--no-print-directory",
             "python-version-check",
+            _MAKE_SHELL,
         ],
         cwd=tmp_path,
         check=False,
@@ -246,6 +254,7 @@ def test_make_preserves_path_entries_with_spaces(tmp_path: Path) -> None:
             str(root / "Makefile"),
             "--no-print-directory",
             "python-version-check",
+            _MAKE_SHELL,
         ],
         cwd=tmp_path,
         check=False,
