@@ -2702,20 +2702,23 @@ function syncWorkspaceBarHeight() {
 
 function activeDraftMatches(draft) {
   if (!draft || safeFilename(draft.title || "Schaubild") !== safeFilename(currentTitle)) return false;
-  try {
-    if (currentRepresentation) {
-      return draft.kind === "native"
-        && JSON.stringify(draft.representation) === JSON.stringify(currentRepresentation);
-    }
-    if (currentNativeDocument || currentNativeCanvas) {
-      return draft.kind === "native" && Boolean(currentNativeDocument && currentNativeCanvas)
-        && JSON.stringify(draft.nativeDocument) === JSON.stringify(currentNativeDocument)
-        && JSON.stringify(draft.nativeCanvas) === JSON.stringify(currentNativeCanvas);
-    }
-    return draft.kind === "legacy" && draft.xml === (currentXml || currentLegacyXml);
-  } catch (_) {
-    return false;
+  const sameContent = (left, right) => {
+    const snapshot = nativeCanvasSnapshot(left);
+    return snapshot !== null && snapshot === nativeCanvasSnapshot(right);
+  };
+  if (currentRepresentation) {
+    return draft.kind === "native" && sameContent(currentRepresentation, draft.representation);
   }
+  if (currentNativeDocument || currentNativeCanvas) {
+    // An imported Canvas receives its derived document at the iframe startup
+    // acknowledgement. Before that, an identical saved Canvas with a valid
+    // document is already recoverable. JSON key order is not a content edit.
+    return draft.kind === "native"
+      && draft.nativeDocument?.schema_version === "schauwerk-native-editing-document.v1"
+      && sameContent(currentNativeCanvas, draft.nativeCanvas)
+      && (!currentNativeDocument || sameContent(currentNativeDocument, draft.nativeDocument));
+  }
+  return draft.kind === "legacy" && draft.xml === (currentXml || currentLegacyXml);
 }
 
 function showStart() {

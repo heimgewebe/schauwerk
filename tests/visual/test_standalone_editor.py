@@ -708,6 +708,8 @@ def test_start_view_never_silently_discards_unsaved_active_document(tmp_path: Pa
     app_js = (output / "app.js").read_text(encoding="utf-8")
     source = app_js[
         app_js.index("function activeDraftMatches("):app_js.index("function showWorkspace()")
+    ] + app_js[
+        app_js.index("function nativeCanvasSnapshot("):app_js.index("function nativeCanvasDiffersFromRendered(")
     ]
     script = r"""
 let currentXml = null, currentLegacyXml = null;
@@ -754,13 +756,21 @@ if (promptCount !== 2 || leaveCount !== 2 || statusText !== "Entwurf lokal gesic
   throw new Error("recoverable document did not return directly to start");
 }
 currentRepresentation = null;
-currentNativeDocument = {nodes: [{id: "canvas"}]};
+currentNativeDocument = {schema_version: "schauwerk-native-editing-document.v1", nodes: [{id: "canvas"}]};
 currentNativeCanvas = {nodes: [{id: "canvas"}]};
 draft = {kind: "native", title: "Edited", nativeDocument: currentNativeDocument,
   nativeCanvas: currentNativeCanvas};
 if (!activeDraftMatches(draft)) throw new Error("saved Canvas was not recognized");
 draft.nativeCanvas = {nodes: []};
 if (activeDraftMatches(draft)) throw new Error("stale Canvas was accepted");
+// A startup ACK is still pending, but the exact Canvas content is recoverable
+// from the previously saved valid native document, even with reordered keys.
+currentNativeCanvas = {nodes: [], edges: [], schauwerk: {edgeRouting: "smart"}};
+currentNativeDocument = null;
+draft.nativeCanvas = {edges: [], nodes: [], schauwerk: {edgeRouting: "smart"}};
+if (!activeDraftMatches(draft)) throw new Error("equivalent startup Canvas was marked unsaved");
+draft.nativeCanvas.nodes.push({id: "different"});
+if (activeDraftMatches(draft)) throw new Error("different startup Canvas was accepted");
 """
     subprocess.run(
         [node, "--input-type=module", "-e", script],
