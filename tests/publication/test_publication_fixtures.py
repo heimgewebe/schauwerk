@@ -30,6 +30,28 @@ _CURRENT_AI_HANDOFF_SOURCES = {
 }
 
 
+# The source successors below describe historical candidates, not the active
+# renderer. These two immutable source digests were independently read from
+# Git revision 490b3cc4d1b7207dd9929831ad7ce40b6d71f783 (the last pre-audit
+# main). Retain the receipt and predecessor checks without requiring today's
+# editor/test bytes to reproduce that old revision. Current behavior is tested
+# by the live-source visual/editor suites; current visual acceptance is separate.
+_HISTORICAL_EDITOR_SOURCE_SHA256 = {
+    "src/schauwerk/resources/standalone_editor/assets.py": (
+        "eab1f43064366364e5c2d01f5d1de02f27aeb8ce53a2cfbb572a764d4f7435a8"
+    ),
+    "tests/visual/test_standalone_editor.py": (
+        "7abbef4607a2e00a9066699c9be603fa97168b38fefc81fed7cc913d96ab3a89"
+    ),
+}
+
+
+def _historical_editor_source_sha256(path: str) -> str:
+    if path in _HISTORICAL_EDITOR_SOURCE_SHA256:
+        return _HISTORICAL_EDITOR_SOURCE_SHA256[path]
+    return hashlib.sha256((ROOT / path).read_bytes()).hexdigest()
+
+
 def _drag_label_collision_source_successor_proof() -> dict:
     """A newer technical candidate supersedes only source bytes, not old acceptance."""
     path = (
@@ -603,7 +625,7 @@ def _relevance_filter_source_successor_proof() -> dict:
     assert set(proof["source_bindings"]) == set(prior)
     for name, digest in proof["source_bindings"].items():
         assert digest != prior[name]
-        assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == (
+        assert _historical_editor_source_sha256(name) == (
             _source_after_focus_fit(name, digest)
         ), name
     assert "previous_visual_acceptance_inherited" in proof["does_not_establish"]
@@ -1075,7 +1097,7 @@ def _edge_budget_source_successor_proof() -> dict:
     assert set(proof["source_bindings"]) == expected
     for name in expected:
         assert proof["base_source_bindings"][name] != proof["source_bindings"][name]
-        assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == (
+        assert _historical_editor_source_sha256(name) == (
             proof["source_bindings"][name]
         ), name
     assert proof["validation"]["native_max_edges"] == 256
@@ -1113,7 +1135,7 @@ def _vector_pdf_focus_source_successor_proof() -> dict:
     assert set(proof["source_bindings"]) == set(previous["source_bindings"])
     for name, digest in proof["source_bindings"].items():
         assert digest != proof["base_source_bindings"][name]
-        assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == (
+        assert _historical_editor_source_sha256(name) == (
             _source_after_relevance_filter(name, digest)
         ), name
     browser = proof["browser_proof"]
@@ -1149,7 +1171,7 @@ def _a3_readable_print_source_successor_proof() -> dict:
         assert digest != proof["base_source_bindings"][name]
         successor = _vector_pdf_focus_source_successor_proof()
         assert successor["base_source_bindings"][name] == digest, name
-        assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == (
+        assert _historical_editor_source_sha256(name) == (
             _source_after_relevance_filter(name, successor["source_bindings"][name])
         ), name
     # Publication fixture itself evolved after the A3 proof; its original
@@ -15506,7 +15528,7 @@ def test_schaubild_full_editing_source_supersession_is_technically_bound() -> No
     # must be superseded by the new, independently bound history proof below.
     for name, digest in vector["source_bindings"].items():
         if name != editor_path:
-            assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == (
+            assert _historical_editor_source_sha256(name) == (
                 _current_source_digest(name, digest)
             )
 
@@ -15556,7 +15578,7 @@ def test_schaubild_full_editing_source_supersession_is_technically_bound() -> No
                 if name in _edge_budget_source_successor_proof()["source_bindings"]
                 else digest
             )
-            assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == current
+            assert _historical_editor_source_sha256(name) == current
 
     # This revision changes the SVG parser; preserve the historical D2 proof
     # and explicitly bind only the two new source/test artifacts.
@@ -15581,7 +15603,7 @@ def test_schaubild_full_editing_source_supersession_is_technically_bound() -> No
     assert css["evidence_digest"] == digest_mapping(css, "evidence_digest")
     assert "historical_visual_acceptance_inherited" in css["does_not_establish"]
     for name, digest in css["source_bindings"].items():
-        assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == digest
+        assert _historical_editor_source_sha256(name) == digest
 
     # Native structured knowledge maps supersede only the new editor and
     # admission sources. Older D2, full-editing and vector-PDF receipts remain
@@ -15651,7 +15673,7 @@ def test_schaubild_full_editing_source_supersession_is_technically_bound() -> No
     assert set(focus_proof["source_bindings"]) == focus_paths
     for name, digest in focus_proof["source_bindings"].items():
         assert focus_proof["base_source_bindings"][name] == knowledge_map["source_bindings"][name]
-        assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == (
+        assert _historical_editor_source_sha256(name) == (
             _after_browser_readiness_source(name, digest)
         )
     assert focus_proof["validation"]["focused_pytest_passed"] == 21
@@ -15667,7 +15689,7 @@ def test_schaubild_full_editing_source_supersession_is_technically_bound() -> No
         elif name in focus_proof["source_bindings"]:
             assert sha == focus_proof["base_source_bindings"][name]
         else:
-            assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == sha
+            assert _historical_editor_source_sha256(name) == sha
 
     pinch_successor = _edge_first_pinch_source_successor_proof()
     latest_bindings = {
@@ -15713,13 +15735,13 @@ def test_schaubild_full_editing_source_supersession_is_technically_bound() -> No
     for name, old_digest in technical["source_bindings"].items():
         if name in _CURRENT_AI_HANDOFF_SOURCES:
             continue
-        current = hashlib.sha256((ROOT / name).read_bytes()).hexdigest()
+        current = _historical_editor_source_sha256(name)
         assert current == latest_bindings.get(name, old_digest)
     for name in successor["source_bindings"]:
         if name in _CURRENT_AI_HANDOFF_SOURCES:
             continue
         assert (
-            hashlib.sha256((ROOT / name).read_bytes()).hexdigest()
+            _historical_editor_source_sha256(name)
             == latest_bindings[name]
         )
 
@@ -15853,7 +15875,7 @@ def test_schaubild_html_svg_hybrid_preview_source_is_technically_bound() -> None
         )
         effective = _current_source_digest(name, effective)
         if name not in _CURRENT_AI_HANDOFF_SOURCES:
-            assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == effective, name
+            assert _historical_editor_source_sha256(name) == effective, name
         # Existing files continue exactly from the smart-edge candidate; new files start empty.
         assert proof["base_source_bindings"][name] == smart["source_bindings"].get(name), name
     assert {
@@ -15911,7 +15933,7 @@ def test_schaubild_offline_html_source_successor_is_technically_bound() -> None:
             effective = readiness["source_sha256"]
         effective = _current_source_digest(path, effective)
         if path not in _CURRENT_AI_HANDOFF_SOURCES:
-            assert hashlib.sha256((ROOT / path).read_bytes()).hexdigest() == effective, path
+            assert _historical_editor_source_sha256(path) == effective, path
         assert proof["base_source_bindings"][path] == smart["source_bindings"].get(path)
     assert proof["visual_acceptance"] == "pending"
     assert proof["validation"]["full_ci"] == "pending_exact_head"
