@@ -34,21 +34,42 @@ _CURRENT_AI_HANDOFF_SOURCES = {
 # renderer. These two immutable source digests were independently read from
 # Git revision 490b3cc4d1b7207dd9929831ad7ce40b6d71f783 (the last pre-audit
 # main). Retain the receipt and predecessor checks without requiring today's
-# editor/test bytes to reproduce that old revision. Current behavior is tested
+# renderer/test bytes to reproduce an old revision. Current behavior is tested
 # by the live-source visual/editor suites; current visual acceptance is separate.
-_HISTORICAL_EDITOR_SOURCE_SHA256 = {
+# Only the explicitly listed historical source paths are resolved to old bytes.
+# Receipt hashes and all other file checks continue to read the actual files.
+_HISTORICAL_SOURCE_SHA256 = {
     "src/schauwerk/resources/standalone_editor/assets.py": (
         "eab1f43064366364e5c2d01f5d1de02f27aeb8ce53a2cfbb572a764d4f7435a8"
     ),
     "tests/visual/test_standalone_editor.py": (
         "7abbef4607a2e00a9066699c9be603fa97168b38fefc81fed7cc913d96ab3a89"
     ),
+    # Geometry audit: exact previous Main Git blobs (88cb97cdbf3c8bf317b7d44df409b2c5fc8b91f5).
+    "src/schauwerk/resources/native_viewer/assets.py": (
+        "1809f40fba877ee807c314810fc7c3db309889ab077a31578df1b43c418ecd4b"
+    ),
+    "src/schauwerk/resources/native_viewer/smart_router.py": (
+        "0aa03f56e210549bbe7affe5a00cc95147e17028cce9e1e3611e105baaa86d1c"
+    ),
+    "src/schauwerk/visual/native_canvas_smart_router.py": (
+        "c9157513904b77c67b71665128627596335e4804ea5aff53151da789e1b63e3e"
+    ),
+    "src/schauwerk/visual/native_diagram.py": (
+        "4aec5b51aa0675faa7736d3a8533e7120c3f6f74ea2041a86d5c7a4933c570f1"
+    ),
+    "tests/visual/test_native_canvas_smart_integration.py": (
+        "037aeee3d3c465ec9e7066638a5a5fe19ddeb841133d75ce47248a0c7044c2b2"
+    ),
+    "tests/visual/test_native_canvas_smart_router.py": (
+        "3337ed70d1c1d00f77f8d6e34889631d3dc599a7e0608a54e84f0acddb05e19e"
+    ),
 }
 
 
-def _historical_editor_source_sha256(path: str) -> str:
-    if path in _HISTORICAL_EDITOR_SOURCE_SHA256:
-        return _HISTORICAL_EDITOR_SOURCE_SHA256[path]
+def _historical_source_sha256(path: str) -> str:
+    if path in _HISTORICAL_SOURCE_SHA256:
+        return _HISTORICAL_SOURCE_SHA256[path]
     return hashlib.sha256((ROOT / path).read_bytes()).hexdigest()
 
 
@@ -88,7 +109,7 @@ def _drag_label_collision_source_successor_proof() -> dict:
     }
     for name, digest in proof["source_bindings"].items():
         assert digest != proof["base_source_bindings"][name]
-        assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == digest, name
+        assert _historical_source_sha256(name) == digest, name
     assert "historical_visual_acceptance_inherited" in proof["does_not_establish"]
     return proof
 
@@ -132,7 +153,7 @@ def _drag_gutter_source_successor_proof() -> dict:
     for path, expected in proof["source_bindings"].items():
         assert expected != proof["base_source_bindings"][path]
         successor = _drag_label_collision_source_successor_proof()["source_bindings"]
-        assert hashlib.sha256((ROOT / path).read_bytes()).hexdigest() == (
+        assert _historical_source_sha256(path) == (
             successor.get(path, expected)
         ), path
     assert proof["validation"]["node_count"] == 19
@@ -183,7 +204,7 @@ def _tablet_reading_source_successor_proof() -> dict:
     assert set(proof["source_bindings"]) == {asset, touch}
     for name, digest in proof["source_bindings"].items():
         assert digest != proof["base_source_bindings"][name]
-        assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == (
+        assert _historical_source_sha256(name) == (
             _newest_proven_viewer_sha(name, digest)
         ), name
     assert proof["validation"]["chrome_touch_focus_compact_and_19_node_crowded"] == "passed"
@@ -244,7 +265,7 @@ def _moved_label_clip_source_successor_proof() -> dict:
     }
     for name, digest in proof["source_bindings"].items():
         assert digest != proof["base_source_bindings"][name]
-        assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == (
+        assert _historical_source_sha256(name) == (
             _reading_latest_source_sha(name, digest)
         ), name
     assert proof["validation"]["existing_chrome_drag_regression_red_before"] == "reproduced"
@@ -303,7 +324,7 @@ def _tablet_focus_source_successor_proof() -> dict:
         latest = _moved_label_clip_source_successor_proof()["source_bindings"].get(
             name, digest
         )
-        assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == (
+        assert _historical_source_sha256(name) == (
             _reading_latest_source_sha(name, latest)
         ), name
     assert proof["validation"]["chrome_touch_focus_red_before"] == "reproduced"
@@ -358,7 +379,7 @@ def _dynamic_label_clip_source_successor_proof() -> dict:
         expected = _moved_label_clip_source_successor_proof()["source_bindings"].get(
             name, tablet
         )
-        assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == (
+        assert _historical_source_sha256(name) == (
             _reading_latest_source_sha(name, expected)
         ), name
     assert proof["validation"]["chrome_drag_stale_clip_red_before"] == "reproduced"
@@ -454,7 +475,7 @@ def _focus_fit_edge_source_successor_proof(*, check_source_bytes: bool = True) -
         assert proof["base_source_bindings"][name] != digest
         if check_source_bytes:
             expected = _edge_label_visibility_successor_proof()["source_bindings"].get(name, digest)
-            assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == (
+            assert _historical_source_sha256(name) == (
                 _current_live_viewer_sha(name, expected)
             ), name
     assert "previous_visual_acceptance_inherited" in proof["does_not_establish"]
@@ -493,7 +514,7 @@ def _edge_label_visibility_successor_proof() -> dict:
     }
     assert set(proof["source_bindings"]) == {changed_path}
     assert proof["source_bindings"][changed_path] != proof["base_source_bindings"][changed_path]
-    assert hashlib.sha256((ROOT / changed_path).read_bytes()).hexdigest() == (
+    assert _historical_source_sha256(changed_path) == (
         _current_live_viewer_sha(changed_path, proof["source_bindings"][changed_path])
     )
     assert "previous_visual_acceptance_inherited" in proof["does_not_establish"]
@@ -566,7 +587,7 @@ def _focus_fit_source_successor_proof() -> dict:
     assert set(proof["source_bindings"]) == changed
     for name, digest in proof["source_bindings"].items():
         assert proof["base_source_bindings"][name] != digest, name
-        assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == (
+        assert _historical_source_sha256(name) == (
             _source_after_focus_fit_edges(name, digest)
         ), name
     assert "previous_visual_acceptance_inherited" in proof["does_not_establish"]
@@ -625,7 +646,7 @@ def _relevance_filter_source_successor_proof() -> dict:
     assert set(proof["source_bindings"]) == set(prior)
     for name, digest in proof["source_bindings"].items():
         assert digest != prior[name]
-        assert _historical_editor_source_sha256(name) == (
+        assert _historical_source_sha256(name) == (
             _source_after_focus_fit(name, digest)
         ), name
     assert "previous_visual_acceptance_inherited" in proof["does_not_establish"]
@@ -689,7 +710,7 @@ def _mobile_search_overlay_source_successor_proof() -> dict:
     for name in changed:
         assert proof["base_source_bindings"][name] == previous["source_bindings"][name]
         assert proof["source_bindings"][name] != proof["base_source_bindings"][name]
-        assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == (
+        assert _historical_source_sha256(name) == (
             _source_after_relevance_filter(name, proof["source_bindings"][name])
         ), name
     assert "previous_visual_acceptance_inherited" in proof["does_not_establish"]
@@ -758,7 +779,7 @@ def _responsive_manual_center_source_successor_proof() -> dict:
             assert name == "tests/visual/test_native_viewer_tap_autofit_browser.py"
             assert proof["base_source_bindings"][name] == pinch["source_bindings"][name]
         assert proof["source_bindings"][name] != proof["base_source_bindings"][name]
-        assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == (
+        assert _historical_source_sha256(name) == (
             _source_after_mobile_overlay(name, proof["source_bindings"][name])
         ), name
     case = proof["production_counterexample"]
@@ -813,7 +834,7 @@ def _find_focus_source_successor_proof() -> dict:
         latest = _responsive_manual_center_source_successor_proof()[
             "source_bindings"
         ].get(name, proof["source_bindings"][name])
-        assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == (
+        assert _historical_source_sha256(name) == (
             _source_after_mobile_overlay(name, latest)
         ), name
     return proof
@@ -861,7 +882,7 @@ def _readable_router_source_proof() -> dict:
     assert set(receipt["base_source_bindings"]) == set(receipt["source_bindings"])
     for name, digest in receipt["source_bindings"].items():
         assert receipt["base_source_bindings"][name] != digest
-        assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == (
+        assert _historical_source_sha256(name) == (
             _newest_proven_viewer_sha(name, digest)
         )
     return receipt
@@ -916,7 +937,7 @@ def _freeform_smooth_successor_proof() -> dict:
         latest = _responsive_manual_center_source_successor_proof()[
             "source_bindings"
         ].get(name, latest)
-        assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == (
+        assert _historical_source_sha256(name) == (
             _source_after_readable_router(
                 name, _source_after_mobile_overlay(name, latest)
             )
@@ -985,7 +1006,7 @@ def _router_bbox_performance_successor_proof() -> dict:
         expected_sha = _freeform_smooth_successor_proof()["source_bindings"].get(
             name, proof["source_bindings"][name]
         )
-        assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == (
+        assert _historical_source_sha256(name) == (
             _source_after_readable_router(name, expected_sha)
         ), name
     assert proof["validation"]["source_48_nodes_256_edges_svg_byte_identical"] is True
@@ -1097,7 +1118,7 @@ def _edge_budget_source_successor_proof() -> dict:
     assert set(proof["source_bindings"]) == expected
     for name in expected:
         assert proof["base_source_bindings"][name] != proof["source_bindings"][name]
-        assert _historical_editor_source_sha256(name) == (
+        assert _historical_source_sha256(name) == (
             proof["source_bindings"][name]
         ), name
     assert proof["validation"]["native_max_edges"] == 256
@@ -1135,7 +1156,7 @@ def _vector_pdf_focus_source_successor_proof() -> dict:
     assert set(proof["source_bindings"]) == set(previous["source_bindings"])
     for name, digest in proof["source_bindings"].items():
         assert digest != proof["base_source_bindings"][name]
-        assert _historical_editor_source_sha256(name) == (
+        assert _historical_source_sha256(name) == (
             _source_after_relevance_filter(name, digest)
         ), name
     browser = proof["browser_proof"]
@@ -1171,7 +1192,7 @@ def _a3_readable_print_source_successor_proof() -> dict:
         assert digest != proof["base_source_bindings"][name]
         successor = _vector_pdf_focus_source_successor_proof()
         assert successor["base_source_bindings"][name] == digest, name
-        assert _historical_editor_source_sha256(name) == (
+        assert _historical_source_sha256(name) == (
             _source_after_relevance_filter(name, successor["source_bindings"][name])
         ), name
     # Publication fixture itself evolved after the A3 proof; its original
@@ -1324,7 +1345,7 @@ def _edge_first_pinch_source_successor_proof() -> dict:
         previous["source_bindings"][test_path]
     )
     for name, expected in proof["source_bindings"].items():
-        assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == (
+        assert _historical_source_sha256(name) == (
             _current_source_digest(name, expected)
         ), name
     readiness = proof["ci_readiness_successor"]
@@ -1390,7 +1411,7 @@ def _reciprocal_rails_source_successor_proof() -> dict:
         predecessor, "evidence_digest"
     )
     for path, digest in proof["source_bindings"].items():
-        assert hashlib.sha256((ROOT / path).read_bytes()).hexdigest() == (
+        assert _historical_source_sha256(path) == (
             _current_source_digest(path, digest)
         ), path
     assert proof["validation"]["consumer_runtime"] == "not_integrated"
@@ -1585,7 +1606,7 @@ def _hybrid_offline_integration_proof() -> dict:
         if name == "Dockerfile":
             assert expected == _d2_oci_reuse_proof()["predecessor"]["dockerfile_sha256"]
         elif name not in _CURRENT_AI_HANDOFF_SOURCES:
-            assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected, name
+            assert _historical_source_sha256(name) == expected, name
     return proof
 
 def _offline_html_mobile_help_proof() -> dict:
@@ -1626,7 +1647,7 @@ def _offline_html_mobile_help_proof() -> dict:
             assert readiness["path"] == name
             assert readiness["predecessor_sha256"] == expected
             expected = readiness["source_sha256"]
-        assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == (
+        assert _historical_source_sha256(name) == (
             _current_source_digest(name, expected)
         ), name
     visual = proof["visual_readback"]
@@ -2287,7 +2308,7 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
     }
     for name, expected in schaubild_successor["source_bindings"].items():
         if name not in runtime_superseded_files:
-            assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected
+            assert _historical_source_sha256(name) == expected
 
     runtime_successor = json.loads(
         (SCHAUBILD_RUNTIME_EVIDENCE / "acceptance-receipt.json").read_text(encoding="utf-8")
@@ -2338,7 +2359,7 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
             assert expected == (
                 "a16ee84215022a4843528c8d22b598aba8c4d3300ca117d46ef4f3dc7e772cbc"
             )
-            assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == (
+            assert _historical_source_sha256(name) == (
                 "6e53f09f0c68e25c721203c2a879092a55d6af5920e058015749434dd62716fb"
             )
             continue
@@ -2347,7 +2368,7 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
             | smoke_pipefail_superseded_files
             | native_image_readback_superseded_files
         ):
-            assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected
+            assert _historical_source_sha256(name) == expected
 
     drawio_successor = json.loads(
         (SCHAUBILD_DRAWIO_NATIVE_EVIDENCE / "acceptance-receipt.json").read_text(
@@ -2368,7 +2389,7 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
     )
     for name, expected in drawio_successor["source_bindings"].items():
         if name not in editor_superseded_files:
-            assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected
+            assert _historical_source_sha256(name) == expected
 
     draft_restore_superseded_files = {
         "src/schauwerk/resources/standalone_editor/assets.py",
@@ -2882,7 +2903,7 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
             | json_canvas_text_fit_superseded_files
             | set(_smart_edge_source_proof()["source_bindings"])
         ):
-            assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected
+            assert _historical_source_sha256(name) == expected
     assert editor_successor["checks"]["browser_smoke_passed_count"] == 7
     assert editor_successor["checks"]["clipped_edge_labels_do_not_block_node_drag"] is True
     assert (
@@ -3233,7 +3254,7 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
         if name not in (
             product_ui_superseded_files | json_canvas_text_fit_superseded_files
         ):
-            assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected
+            assert _historical_source_sha256(name) == expected
     assert draft_restore_successor["checks"] == {
         "focused_restore_tests_passed": True,
         "functional_head_independent_opus_review_passed": True,
@@ -3352,7 +3373,7 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
             | focus_default_review_fix_superseded_files
             | single_workspace_exports_superseded_files
         ):
-            assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected
+            assert _historical_source_sha256(name) == expected
     assert product_ui_successor["checks"] == {
         "historical_acceptance_left_immutable": True,
         "code_suite_excluding_successor_binding_gate_passed": True,
@@ -3430,7 +3451,7 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
             | focus_default_review_fix_superseded_files
             | single_workspace_exports_superseded_files
         ):
-            assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected
+            assert _historical_source_sha256(name) == expected
     assert product_ui_review_fix["checks"] == {
         "historical_product_ui_acceptance_left_immutable": True,
         "unsupported_plain_text_claim_removed": True,
@@ -3509,7 +3530,7 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
             | focus_default_review_fix_superseded_files
             | single_workspace_exports_superseded_files
         ):
-            assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected
+            assert _historical_source_sha256(name) == expected
     assert final_ui_fix["checks"] == {
         "historical_review_fix_acceptance_left_immutable": True,
         "inactive_edit_controls_hidden_outside_hosted_editing": True,
@@ -3620,7 +3641,7 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
             | full_editor_technical_superseded_files
             | set(_smart_edge_source_proof()["source_bindings"])
         ):
-            assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected
+            assert _historical_source_sha256(name) == expected
     assert hashlib.sha256(
         (SCHAUBILD_NATIVE_EDITOR_EVIDENCE / "acceptance-receipt.json").read_bytes()
     ).hexdigest() == "9cade3ab2edced27be114b8b7e773750dc33cd47d4d9fcad410a518bda832207"
@@ -3712,7 +3733,7 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
     )
     for name, expected in json_canvas_text_fit_final["source_bindings"].items():
         if name not in json_canvas_text_fit_zero_advance_superseded_files:
-            assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected
+            assert _historical_source_sha256(name) == expected
     assert json_canvas_text_fit_final["checks"] == {
         "historical_text_fit_acceptance_left_immutable": True,
         "xml_forbidden_controls_normalized_before_bounded_grapheme_layout": True,
@@ -3792,7 +3813,7 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
     )
     for name, expected in json_canvas_text_fit_zero_advance["source_bindings"].items():
         if name not in json_canvas_text_fit_combining_space_superseded_files:
-            assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected
+            assert _historical_source_sha256(name) == expected
     assert json_canvas_text_fit_zero_advance["checks"] == {
         "historical_final_text_fit_acceptance_left_immutable": True,
         "zero_advance_controls_excluded_from_geometry_probe_cap": True,
@@ -3867,7 +3888,7 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
         "source_bindings"
     ].items():
         if name not in json_canvas_text_fit_fallback_carry_superseded_files:
-            assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected
+            assert _historical_source_sha256(name) == expected
     assert json_canvas_text_fit_combining_space["checks"] == {
         "historical_zero_advance_acceptance_left_immutable": True,
         "already_stripped_collapsible_edge_whitespace_normalized_before_grapheme_fit": True,
@@ -3942,7 +3963,7 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
         "source_bindings"
     ].items():
         if name not in json_canvas_text_fit_independent_review_superseded_files:
-            assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected
+            assert _historical_source_sha256(name) == expected
     assert json_canvas_text_fit_fallback_carry["checks"] == {
         "historical_combining_space_acceptance_left_immutable": True,
         "wide_fallback_punctuation_and_symbols_budgeted_conservatively": True,
@@ -4030,7 +4051,7 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
         "source_bindings"
     ].items():
         if name not in json_canvas_text_fit_wide_letters_superseded_files:
-            assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected
+            assert _historical_source_sha256(name) == expected
     review_debt = json_canvas_text_fit_independent_review["review_debt"]
     assert review_debt["rejected_head"] == "a4ebdbf1d7757556843bc4fe62a86d79df2cbd55"
     assert review_debt["verdict"] == "REJECT_THIS_REVISION"
@@ -4127,7 +4148,7 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
     )
     for name, expected in json_canvas_text_fit_wide_letters["source_bindings"].items():
         if name not in json_canvas_text_fit_review_remediation_superseded_files:
-            assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected
+            assert _historical_source_sha256(name) == expected
     assert json_canvas_text_fit_wide_letters["checks"] == {
         "historical_independent_review_acceptance_left_immutable": True,
         "u1675_reproduced_as_prior_underbudget_case": True,
@@ -4201,7 +4222,7 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
         "source_bindings"
     ].items():
         if name not in json_canvas_text_fit_unicode_remediation_superseded_files:
-            assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected
+            assert _historical_source_sha256(name) == expected
     assert json_canvas_text_fit_review_remediation["checks"] == {
         "historical_wide_letter_acceptance_left_immutable": True,
         "rejected_revision_not_reused_as_accepted_revision": True,
@@ -4300,7 +4321,7 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
         "source_bindings"
     ].items():
         if name not in json_canvas_text_fit_review_hardening_superseded_files:
-            assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected
+            assert _historical_source_sha256(name) == expected
     assert json_canvas_text_fit_unicode_remediation["checks"] == {
         "historical_review_remediation_acceptance_left_immutable": True,
         "rejected_revision_not_reused_as_accepted_revision": True,
@@ -4416,7 +4437,7 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
         "source_bindings"
     ].items():
         if name not in json_canvas_text_fit_review_hardening_superseded_files:
-            assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected
+            assert _historical_source_sha256(name) == expected
     assert json_canvas_text_fit_claim_integrity["checks"] == {
         "historical_review_remediation_acceptance_left_immutable": True,
         "historical_non_linear_zwj_claim_is_explicitly_superseded": True,
@@ -4522,7 +4543,7 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
     )
     for name, expected in json_canvas_text_fit_review_hardening["source_bindings"].items():
         if name not in json_canvas_text_fit_ascii_fallback_superseded_files:
-            assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected
+            assert _historical_source_sha256(name) == expected
     assert json_canvas_text_fit_review_hardening["checks"] == {
         "claim_integrity_parent_left_immutable": True,
         "fsi_budget_exhaustion_fails_closed": True,
@@ -4614,7 +4635,7 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
     )
     for name, expected in json_canvas_text_fit_ascii_fallback["source_bindings"].items():
         if name not in json_canvas_text_fit_numeric_fallback_superseded_files:
-            assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected
+            assert _historical_source_sha256(name) == expected
     assert json_canvas_text_fit_ascii_fallback["checks"] == {
         "review_hardening_parent_left_immutable": True,
         "github_ascii_operator_fallback_review_remediated": True,
@@ -4709,7 +4730,7 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
         "source_bindings"
     ].items():
         if name not in json_canvas_text_fit_svg_whitespace_superseded_files:
-            assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected
+            assert _historical_source_sha256(name) == expected
     assert json_canvas_text_fit_numeric_fallback["checks"] == {
         "ascii_fallback_parent_left_immutable": True,
         "github_numeric_fallback_review_remediated": True,
@@ -4823,7 +4844,7 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
         "source_bindings"
     ].items():
         if name not in json_canvas_text_fit_geometry_cap_superseded_files:
-            assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected
+            assert _historical_source_sha256(name) == expected
     assert json_canvas_text_fit_svg_whitespace["checks"] == {
         "numeric_fallback_parent_left_immutable": True,
         "github_svg_whitespace_review_remediated": True,
@@ -4923,7 +4944,7 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
     )
     for name, expected in json_canvas_text_fit_geometry_cap["source_bindings"].items():
         if name not in json_canvas_text_fit_ellipsis_width_superseded_files:
-            assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected
+            assert _historical_source_sha256(name) == expected
     assert json_canvas_text_fit_geometry_cap["checks"] == {
         "svg_whitespace_parent_left_immutable": True,
         "github_geometry_cap_review_remediated": True,
@@ -5030,7 +5051,7 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
     )
     for name, expected in json_canvas_text_fit_ellipsis_width["source_bindings"].items():
         if name not in json_canvas_text_fit_indic_zwj_floor_superseded_files:
-            assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected
+            assert _historical_source_sha256(name) == expected
     assert json_canvas_text_fit_ellipsis_width["checks"] == {
         "geometry_cap_parent_left_immutable": True,
         "github_ellipsis_width_review_remediated": True,
@@ -5131,7 +5152,7 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
     )
     for name, expected in json_canvas_text_fit_indic_zwj_floor["source_bindings"].items():
         if name not in json_canvas_text_fit_final_invariants_superseded_files:
-            assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected
+            assert _historical_source_sha256(name) == expected
     assert json_canvas_text_fit_indic_zwj_floor["checks"] == {
         "ellipsis_width_parent_left_immutable": True,
         "independent_review_linear_floor_finding_remediated": True,
@@ -5242,7 +5263,7 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
         "source_bindings"
     ].items():
         if name not in json_canvas_text_fit_emoji_presentation_superseded_files:
-            assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected
+            assert _historical_source_sha256(name) == expected
     assert json_canvas_text_fit_final_invariants["checks"] == {
         "indic_zwj_parent_left_immutable": True,
         "github_zero_width_geometry_review_remediated": True,
@@ -5362,7 +5383,7 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
         "source_bindings"
     ].items():
         if name not in json_canvas_text_fit_markdown_linear_superseded_files:
-            assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected
+            assert _historical_source_sha256(name) == expected
     assert json_canvas_text_fit_emoji_presentation["checks"] == {
         "final_invariants_parent_left_immutable": True,
         "github_emoji_presentation_review_remediated": True,
@@ -5467,7 +5488,7 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
         "source_bindings"
     ].items():
         if name not in json_canvas_text_fit_vertical_marker_superseded_files:
-            assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected
+            assert _historical_source_sha256(name) == expected
     assert json_canvas_text_fit_markdown_linear["checks"] == {
         "emoji_presentation_parent_left_immutable": True,
         "github_markdown_regex_review_remediated": True,
@@ -5570,7 +5591,7 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
         "source_bindings"
     ].items():
         if name not in json_canvas_text_fit_supplementary_symbols_superseded_files:
-            assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected
+            assert _historical_source_sha256(name) == expected
     assert json_canvas_text_fit_vertical_marker["checks"] == {
         "markdown_linear_parent_left_immutable": True,
         "github_vertical_marker_review_remediated": True,
@@ -5673,7 +5694,7 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
         "source_bindings"
     ].items():
         if name not in json_canvas_text_fit_private_use_superseded_files:
-            assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected
+            assert _historical_source_sha256(name) == expected
     assert json_canvas_text_fit_supplementary_symbols["checks"] == {
         "vertical_marker_parent_left_immutable": True,
         "github_supplementary_symbol_review_remediated": True,
@@ -5791,7 +5812,7 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
             json_canvas_text_fit_viewer_startup_status_superseded_files
             | ui_controls_superseded_files
         ):
-            assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected
+            assert _historical_source_sha256(name) == expected
     assert json_canvas_text_fit_viewer_startup["checks"] == {
         "supplementary_symbols_parent_left_immutable": True,
         "public_head_browser_baseline_passed": True,
@@ -5891,7 +5912,7 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
         if name in single_workspace_max_canvas_superseded_files:
             continue
         if name not in ui_controls_superseded_files:
-            assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected
+            assert _historical_source_sha256(name) == expected
     assert json_canvas_text_fit_viewer_startup_status["checks"] == {
         "viewer_startup_parent_left_immutable": True,
         "browser_test_remains_parent_owned_and_byte_identical": True,
@@ -5986,7 +6007,7 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
     )
     for name, expected in json_canvas_text_fit_private_use["source_bindings"].items():
         if name not in edge_label_width_superseded_files:
-            assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected
+            assert _historical_source_sha256(name) == expected
     assert json_canvas_text_fit_private_use["checks"] == {
         "viewer_startup_status_parent_left_immutable": True,
         "github_private_use_review_remediated": True,
@@ -6091,7 +6112,7 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
             | focus_default_review_fix_superseded_files
             | single_workspace_exports_superseded_files
         ):
-            assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected
+            assert _historical_source_sha256(name) == expected
     assert ui_controls["checks"] == {
         "historical_parent_acceptance_left_immutable": True,
         "native_host_legacy_only_controls_hidden": True,
@@ -6187,7 +6208,7 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
             | focus_default_review_fix_superseded_files
             | single_workspace_exports_superseded_files
         ):
-            assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected
+            assert _historical_source_sha256(name) == expected
     assert ui_controls_resize["checks"] == {
         "parent_acceptance_left_immutable": True,
         "fitted_view_refits_on_viewport_resize": True,
@@ -6264,11 +6285,11 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
             continue
         if name in d2_oci_successor["source_bindings"]:
             assert (
-                hashlib.sha256((ROOT / name).read_bytes()).hexdigest()
+                _historical_source_sha256(name)
                 == d2_oci_successor["source_bindings"][name]
             )
         elif name not in content_editing_superseded_files:
-            assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected
+            assert _historical_source_sha256(name) == expected
     assert smoke_pipefail["checks"] == {
         "historical_parent_acceptance_left_immutable": True,
         "merged_main_native_image_failure_observed": True,
@@ -6444,7 +6465,7 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
         if name in single_workspace_max_canvas_superseded_files:
             continue
         if name not in content_editing_recovery_superseded_files:
-            assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected
+            assert _historical_source_sha256(name) == expected
     assert content_editing["checks"] == {
         "historical_parent_acceptance_left_immutable": True,
         "canonical_representation_content_editable": True,
@@ -6579,7 +6600,7 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
         if name in single_workspace_max_canvas_superseded_files:
             continue
         if name not in content_editing_form_submit_superseded_files:
-            assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected
+            assert _historical_source_sha256(name) == expected
     assert content_editing_recovery["checks"] == {
         "historical_parent_acceptance_left_immutable": True,
         "dragged_layout_overrides_migrate_across_content_digest": True,
@@ -6696,7 +6717,7 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
         if name in single_workspace_max_canvas_superseded_files:
             continue
         if name not in content_editing_valid_draft_recovery_superseded_files:
-            assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected
+            assert _historical_source_sha256(name) == expected
     assert content_editing_form_submit["checks"] == {
         "historical_parent_acceptance_left_immutable": True,
         "cancel_controls_are_non_submit_buttons": True,
@@ -6837,7 +6858,7 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
         if name in single_workspace_max_canvas_superseded_files:
             continue
         if name not in content_editing_recovery_layout_reload_superseded_files:
-            assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected
+            assert _historical_source_sha256(name) == expected
     assert content_editing_valid_draft_recovery["checks"] == {
         "historical_parent_acceptance_left_immutable": True,
         "transient_candidate_retains_last_valid_representation": True,
@@ -6939,7 +6960,7 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
         if name in single_workspace_max_canvas_superseded_files:
             continue
         if name not in content_editing_save_feedback_superseded_files:
-            assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected
+            assert _historical_source_sha256(name) == expected
     assert content_editing_recovery_layout_reload["checks"] == {
         "historical_parent_acceptance_left_immutable": True,
         "transient_recovery_draft_retains_valid_input_digest": True,
@@ -7072,7 +7093,7 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
         if name in single_workspace_max_canvas_superseded_files:
             continue
         if name not in content_editing_recovery_save_hardening_superseded_files:
-            assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected
+            assert _historical_source_sha256(name) == expected
     assert content_editing_save_feedback["checks"] == {
         "historical_parent_acceptance_left_immutable": True,
         "content_dialog_has_visible_role_alert_feedback": True,
@@ -7226,7 +7247,7 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
             | focus_default_review_fix_superseded_files
             | single_workspace_exports_superseded_files
         ):
-            assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected
+            assert _historical_source_sha256(name) == expected
     assert content_editing_recovery_save_hardening["checks"] == {
         "historical_parent_acceptance_left_immutable": True,
         "combined_render_and_local_draft_failure_exposes_persistence_loss": True,
@@ -7366,7 +7387,7 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
             focus_default_review_fix_superseded_files
             | single_workspace_exports_superseded_files
         ):
-            assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected
+            assert _historical_source_sha256(name) == expected
     assert focus_default["checks"] == {
         "historical_parent_acceptance_left_immutable": True,
         "focus_mode_default_on_workspace_entry": True,
@@ -7452,7 +7473,7 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
                 # Historical acceptance stays immutable; bind current test bytes
                 # through the technical successor's exact predecessor SHA.
                 expected = _current_source_digest(name, expected)
-            assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected
+            assert _historical_source_sha256(name) == expected
     assert focus_default_review_fix["checks"] == {
         "historical_parent_acceptance_left_immutable": True,
         "current_pr_p2_findings_reproduced_and_addressed": True,
@@ -7553,7 +7574,7 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
         if name in single_workspace_max_canvas_superseded_files:
             continue
         if name not in single_workspace_review_fix_superseded_files:
-            assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected
+            assert _historical_source_sha256(name) == expected
     assert single_workspace_exports["checks"] == {
         "historical_parent_acceptance_left_immutable": True,
         "compact_workspace_removed": True,
@@ -7672,7 +7693,7 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
         if name in single_workspace_max_canvas_superseded_files:
             continue
         if name not in single_workspace_mobile_status_superseded_files:
-            assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected
+            assert _historical_source_sha256(name) == expected
     assert single_workspace_review_fix["checks"] == {
         "historical_parent_acceptance_left_immutable": True,
         "advisory_review_findings_reproduced_and_addressed": True,
@@ -7787,7 +7808,7 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
         if name in single_workspace_max_canvas_superseded_files:
             continue
         if name not in single_workspace_wrapped_dock_superseded_files:
-            assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected
+            assert _historical_source_sha256(name) == expected
     assert single_workspace_mobile_status["checks"] == {
         "historical_parent_acceptance_left_immutable": True,
         "current_head_p2_reproduced_and_addressed": True,
@@ -7933,7 +7954,7 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
         if name in single_workspace_max_canvas_superseded_files:
             continue
         if name not in single_workspace_dark_status_superseded_files:
-            assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected
+            assert _historical_source_sha256(name) == expected
     assert single_workspace_wrapped_dock["checks"] == {
         "historical_parent_acceptance_left_immutable": True,
         "current_head_review_threads_reproduced_and_addressed": True,
@@ -8071,7 +8092,7 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
     for name, expected in single_workspace_dark_status["source_bindings"].items():
         if name in single_workspace_max_canvas_superseded_files:
             continue
-        assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected
+        assert _historical_source_sha256(name) == expected
     assert single_workspace_dark_status["checks"] == {
         "historical_parent_acceptance_left_immutable": True,
         "current_head_dark_mode_p2_reproduced_and_addressed": True,
@@ -8203,7 +8224,7 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
             | single_workspace_side_safearea_superseded_files
         ):
             continue
-        assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected
+        assert _historical_source_sha256(name) == expected
     assert single_workspace_max_canvas["checks"]["single_workspace_only_after_open"] is True
     assert (
         single_workspace_max_canvas["checks"]["export_popover_closes_after_export_action"]
@@ -8298,7 +8319,7 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
             | single_workspace_side_safearea_superseded_files
         ):
             continue
-        assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected
+        assert _historical_source_sha256(name) == expected
     fit_finding = single_workspace_fit_clearance["check_evidence"]["review_finding"]
     assert fit_finding["thread_id"] == "PRRT_kwDOTGqvHc6o8b6l"
     assert fit_finding["comment_id"] == 4181740632
@@ -8387,7 +8408,7 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
             | single_workspace_side_safearea_superseded_files
         ):
             continue
-        assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected
+        assert _historical_source_sha256(name) == expected
     assert all(review_closure["checks"].values())
     review_evidence = review_closure["check_evidence"]
     pre_validate = review_evidence["pre_successor_full_validate"]
@@ -8484,7 +8505,7 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
             | single_workspace_independent_remediation_superseded_files
         ):
             continue
-        assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected
+        assert _historical_source_sha256(name) == expected
     assert all(review_hardening["checks"].values())
     hardening_evidence = review_hardening["check_evidence"]
     pre = hardening_evidence["pre_successor_full_validate"]
@@ -8619,7 +8640,7 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
     for name, expected in zoom_continuity["source_bindings"].items():
         if name in single_workspace_fit_retry_superseded_files:
             continue
-        assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected
+        assert _historical_source_sha256(name) == expected
     assert all(zoom_continuity["checks"].values())
     zoom_evidence = zoom_continuity["check_evidence"]
     assert zoom_evidence["prior_current_head_independent_review"][
@@ -8729,7 +8750,7 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
             | single_workspace_independent_remediation_superseded_files
         ):
             continue
-        assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected
+        assert _historical_source_sha256(name) == expected
     assert all(fit_retry["checks"].values())
     fit_checks = fit_retry["check_evidence"]
     assert fit_checks["confirmed_ci_failure"]["observed_clearance_px"] == -7.13
@@ -8871,7 +8892,7 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
     for name, expected in popover_anchor["source_bindings"].items():
         if name in single_workspace_final_review_superseded_files:
             continue
-        assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected
+        assert _historical_source_sha256(name) == expected
     assert all(popover_anchor["checks"].values())
     pop_checks = popover_anchor["check_evidence"]
     prev = pop_checks["independent_review"]
@@ -8981,7 +9002,7 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
             | single_workspace_side_safearea_superseded_files
         ):
             continue
-        assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected
+        assert _historical_source_sha256(name) == expected
     assert all(final_review["checks"].values())
     assert final_review["check_evidence"]["red_before"]["result"] == "failed"
     focused = final_review["check_evidence"]["focused_tests"]
@@ -9068,7 +9089,7 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
             | single_workspace_side_safearea_superseded_files
         ):
             continue
-        assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected
+        assert _historical_source_sha256(name) == expected
     assert all(safe_area_receipt["checks"].values())
     safe_evidence = safe_area_receipt["check_evidence"]
     assert safe_evidence["review_finding"]["pre_fix_host_clearance_px"] < 0
@@ -9157,7 +9178,7 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
     for name, expected in test_contract["source_bindings"].items():
         if name in single_workspace_independent_remediation_superseded_files:
             continue
-        assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected
+        assert _historical_source_sha256(name) == expected
     assert test_contract["unchanged_production_source_bindings"] == (
         safe_area_receipt["source_bindings"]
     )
@@ -9167,7 +9188,7 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
             | single_workspace_side_safearea_superseded_files
         ):
             continue
-        assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected
+        assert _historical_source_sha256(name) == expected
     assert all(test_contract["checks"].values())
     contract_checks = test_contract["check_evidence"]
     assert contract_checks["old_static_test_failure"]["passed_count"] == 1668
@@ -9203,7 +9224,7 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
             | single_workspace_tap_autofit_superseded_files
         ):
             continue
-        assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected
+        assert _historical_source_sha256(name) == expected
     assert all(mobile["checks"].values())
     m_checks = mobile["check_evidence"]
     assert m_checks["red_before"]["result"] == "failed"
@@ -9287,7 +9308,7 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
             | single_workspace_independent_remediation_superseded_files
         ):
             continue
-        assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected
+        assert _historical_source_sha256(name) == expected
     assert all(side_safearea["checks"].values())
     sc = side_safearea["check_evidence"]
     assert sc["red_side_before"]["observed_left_css_px"] < 0
@@ -9380,7 +9401,7 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
     for name, expected in ci_font_legacy["source_bindings"].items():
         if name in single_workspace_independent_remediation_superseded_files:
             continue
-        assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected
+        assert _historical_source_sha256(name) == expected
     assert all(ci_font_legacy["checks"].values())
     assert (
         ci_font_legacy["check_evidence"]["prior_remote_ci_red"]["failed_parameterized_cases"]
@@ -9473,7 +9494,7 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
             | single_workspace_legacy_tools_superseded_files
         ):
             continue
-        assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected
+        assert _historical_source_sha256(name) == expected
     assert all(independent_remediation["checks"].values())
     independent_checks = independent_remediation["check_evidence"]
     assert independent_checks["prior_visual_invalid"]["review_verdict"] == "NEEDS_CHANGE"
@@ -9594,7 +9615,7 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
             | single_workspace_ci_caption_safearea_superseded_files
         ):
             continue
-        assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected
+        assert _historical_source_sha256(name) == expected
     assert all(late_menus["checks"].values())
     finding_ids = {item["thread_id"] for item in
                    late_menus["check_evidence"]["codex_review_findings"]}
@@ -9674,7 +9695,7 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
     for name, expected in ci_download["source_bindings"].items():
         if name in single_workspace_ci_caption_safearea_superseded_files:
             continue
-        assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected
+        assert _historical_source_sha256(name) == expected
     assert all(ci_download["checks"].values())
     checks = ci_download["check_evidence"]
     assert checks["prior_remote_red"]["python"] == "3.12"
@@ -9700,7 +9721,7 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
                     | single_workspace_ci_save_font_superseded_files
                     | single_workspace_legacy_tools_superseded_files):
             continue
-        assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected
+        assert _historical_source_sha256(name) == expected
     assert {
         (c["width"], c["height"], c["simulated_safe_inset"]["left"],
          c["simulated_safe_inset"]["right"])
@@ -9765,7 +9786,7 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
                     | single_workspace_ci_save_font_superseded_files
                     | single_workspace_legacy_tools_superseded_files):
             continue
-        assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected
+        assert _historical_source_sha256(name) == expected
     assert all(final["checks"].values())
     assert final["check_evidence"]["visual_acceptance"]["decision"] == "accepted"
     assert final["check_evidence"]["native_green"]["passed_count"] == 6
@@ -9820,7 +9841,7 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
                         | single_workspace_ci_save_font_superseded_files
                         | single_workspace_legacy_tools_superseded_files):
                 continue
-            assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == sha
+            assert _historical_source_sha256(name) == sha
         seen_cases = set()
         for case in readback["cases"]:
             area = (
@@ -9929,7 +9950,7 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
                     | single_workspace_ci_save_font_superseded_files
                     | single_workspace_legacy_tools_superseded_files):
             continue
-        assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == sha
+        assert _historical_source_sha256(name) == sha
     assert all(prompt_acceptance["checks"].values())
     prompt_checks = prompt_acceptance["check_evidence"]
     assert prompt_checks["prior_local_red"]["failed_count"] == 3
@@ -9973,7 +9994,7 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
                         | single_workspace_ci_save_font_superseded_files
                         | single_workspace_legacy_tools_superseded_files):
                 continue
-            assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == sha
+            assert _historical_source_sha256(name) == sha
         covered = set()
         for case in readback["cases"]:
             area = (
@@ -10070,7 +10091,7 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
     for name, expected in status_acceptance["source_bindings"].items():
         if name in single_workspace_status_drag_superseded_files:
             continue
-        assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected
+        assert _historical_source_sha256(name) == expected
     assert all(status_acceptance["checks"].values())
     assert status_acceptance["check_evidence"]["prior_local_red"]["task_id"] == (
         "e481f696f319476c9a94416b"
@@ -10154,7 +10175,7 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
     for name, sha in drag_acceptance["source_bindings"].items():
         if name in single_workspace_gesture_cancel_superseded_files:
             continue
-        assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == sha
+        assert _historical_source_sha256(name) == sha
     assert all(drag_acceptance["checks"].values())
     drag_checks = drag_acceptance["check_evidence"]
     assert drag_checks["prior_local_red"]["task_id"] == "5cf36257993c46089c23a17f"
@@ -10236,7 +10257,7 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
     for name, digest in gesture_acceptance["source_bindings"].items():
         if name in single_workspace_pointer_owner_superseded_files:
             continue
-        assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == digest
+        assert _historical_source_sha256(name) == digest
     assert all(gesture_acceptance["checks"].values())
     assert gesture_acceptance["check_evidence"]["prior_local_red"]["task_id"] == (
         "157f8573df4845e99b0f859a"
@@ -10320,7 +10341,7 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
         if name in (single_workspace_tap_autofit_superseded_files
                     | single_workspace_embedded_host_superseded_files):
             continue
-        assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == sha
+        assert _historical_source_sha256(name) == sha
     assert all(owner_acceptance["checks"].values())
     assert owner_acceptance["check_evidence"]["prior_local_red"]["task_id"] == (
         "f8f11e18f2b94371a4f2b8c5"
@@ -10404,7 +10425,7 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
         if name in (single_workspace_embedded_host_superseded_files
                     | single_workspace_review_p2_superseded_files):
             continue
-        assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == sha
+        assert _historical_source_sha256(name) == sha
     assert all(tap_acceptance["checks"].values())
     evidence = tap_acceptance["check_evidence"]
     assert evidence["tap_only_red"]["job_id"] == "9832d98768bf"
@@ -10482,7 +10503,7 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
     for name, expected in host_acceptance["source_bindings"].items():
         if name in single_workspace_review_p2_superseded_files:
             continue
-        assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected
+        assert _historical_source_sha256(name) == expected
     assert all(host_acceptance["checks"].values())
     assert host_acceptance["check_evidence"]["visual_acceptance"]["decision"] == "accepted"
     assert host_acceptance["check_evidence"]["browser_smoke_green"]["passed_count"] == 28
@@ -10564,7 +10585,7 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
                     | native_history_harness_superseded_files
                     | native_png_export_test_superseded_files):
             continue
-        assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected
+        assert _historical_source_sha256(name) == expected
     assert all(review_p2_acceptance["checks"].values())
     review_evidence = review_p2_acceptance["check_evidence"]
     assert review_evidence["reviewer_p2"]["finding_count"] == 3
@@ -10684,7 +10705,7 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
                     | set(_smart_edge_source_proof()["source_bindings"])
                     | set(_edge_first_pinch_source_successor_proof()["source_bindings"])):
             continue
-        assert hashlib.sha256((ROOT / path).read_bytes()).hexdigest() == expected
+        assert _historical_source_sha256(path) == expected
     assert all(pinch_save_acceptance["checks"].values())
     p2_checks = pinch_save_acceptance["check_evidence"]
     assert p2_checks["independent_prior_p2"]["finding_count"] == 3
@@ -10829,7 +10850,7 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
         if path in (single_workspace_ci_save_font_superseded_files
                     | observation_mode_superseded_files):
             continue
-        assert hashlib.sha256((ROOT / path).read_bytes()).hexdigest() == sha
+        assert _historical_source_sha256(path) == sha
     assert all(host_retry_acceptance["checks"].values())
     assert host_retry_acceptance["check_evidence"]["visual_acceptance"]["decision"] == "accepted"
     assert host_retry_acceptance["check_evidence"]["full_chromium_green"]["passed_count"] == 29
@@ -10917,7 +10938,7 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
         if name in (single_workspace_dual_notch_superseded_files
                     | single_workspace_legacy_tools_superseded_files):
             continue
-        assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected
+        assert _historical_source_sha256(name) == expected
     assert all(ci_save_acceptance["checks"].values())
     accept_evidence = ci_save_acceptance["check_evidence"]
     assert accept_evidence["prior_ci_fail"]["failed_cases"] == 5
@@ -11004,7 +11025,7 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
         if name in (single_workspace_no_observer_superseded_files
                     | single_workspace_legacy_tools_superseded_files):
             continue
-        assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected
+        assert _historical_source_sha256(name) == expected
     assert all(dual_notch_acceptance["checks"].values())
     dual_evidence = dual_notch_acceptance["check_evidence"]
     assert dual_evidence["focused_green"]["passed_count"] == 6
@@ -11101,14 +11122,14 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
     for name, expected in no_observer_acceptance["source_bindings"].items():
         if name in single_workspace_legacy_tools_superseded_files:
             continue
-        assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected
+        assert _historical_source_sha256(name) == expected
     assert set(no_observer_acceptance["test_bindings"]) == {
         "tests/visual/test_standalone_editor_single_workspace.py"
     }
     for name, expected in no_observer_acceptance["test_bindings"].items():
         if name in single_workspace_legacy_tools_superseded_files:
             continue
-        assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected
+        assert _historical_source_sha256(name) == expected
     assert all(no_observer_acceptance["checks"].values())
     no_observer_checks = no_observer_acceptance["check_evidence"]
     assert no_observer_checks["mobile_green"]["passed_count"] == 6
@@ -11210,7 +11231,7 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
             # The current native history UI updates this test's source contract.
             # Keep historical receipt bytes immutable; test the new revision directly.
             continue
-        assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == sha
+        assert _historical_source_sha256(name) == sha
     assert all(legacy_tools_acceptance["checks"].values())
     legacy_checks = legacy_tools_acceptance["check_evidence"]
     assert legacy_checks["mobile_green"]["passed_count"] == 6
@@ -11315,7 +11336,7 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
             # revisions. The historical visual receipt remains unchanged;
             # current behavior is checked by the native-blank regression tests.
             continue
-        assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected
+        assert _historical_source_sha256(name) == expected
     assert all(status_refit_acceptance["checks"].values())
     status_checks = status_refit_acceptance["check_evidence"]
     assert status_checks["focused_green"]["passed_count"] == 6
@@ -11418,7 +11439,7 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
     )
     for name, expected in process_feedback_routing["source_bindings"].items():
         if name not in process_feedback_routing_review_fix_superseded_files:
-            assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected
+            assert _historical_source_sha256(name) == expected
     assert process_feedback_routing["checks"] == {
         "historical_parent_acceptance_left_immutable": True,
         "global_process_detours_localized": True,
@@ -11505,7 +11526,7 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
     )
     for name, expected in process_feedback_routing_review_fix["source_bindings"].items():
         if name not in process_feedback_routing_review_collision_fix_superseded_files:
-            assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected
+            assert _historical_source_sha256(name) == expected
     assert process_feedback_routing_review_fix["checks"] == {
         "historical_parent_acceptance_left_immutable": True,
         "codex_p2_reproduced": True,
@@ -11610,7 +11631,7 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
         "source_bindings"
     ].items():
         if name not in process_feedback_routing_review_closure_superseded_files:
-            assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected
+            assert _historical_source_sha256(name) == expected
     assert process_feedback_routing_review_collision_fix["checks"] == {
         "historical_parent_acceptance_left_immutable": True,
         "codex_feedback_path_p2_reproduced_and_addressed": True,
@@ -11724,7 +11745,7 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
     )
     for name, expected in process_feedback_routing_review_closure["source_bindings"].items():
         if name not in process_feedback_routing_outer_path_superseded_files:
-            assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected
+            assert _historical_source_sha256(name) == expected
     checks = process_feedback_routing_review_closure["checks"]
     assert checks["historical_parent_immutable"]
     assert checks["fail_first_feedback_collision_reproduced"]
@@ -11768,7 +11789,7 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
     )
     for name, expected in process_feedback_routing_outer_path["source_bindings"].items():
         if name not in process_feedback_routing_parallel_long_superseded_files:
-            assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected
+            assert _historical_source_sha256(name) == expected
     outer_checks = process_feedback_routing_outer_path["checks"]
     assert outer_checks["parent_receipt_immutable"]
     assert outer_checks["outer_long_branch_crossing_failed_before_fix"]
@@ -11813,7 +11834,7 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
     )
     for name, expected in parallel_long["source_bindings"].items():
         if name not in process_feedback_routing_anchor_cluster_superseded_files:
-            assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected
+            assert _historical_source_sha256(name) == expected
     assert parallel_long["checks"]["historical_parent_immutable"] is True
     assert parallel_long["checks"]["parallel_long_branch_collision_failed_before_fix"] is True
     assert parallel_long["checks"]["parallel_long_branch_collision_passed_after_fix"] is True
@@ -11856,7 +11877,7 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
     )
     for name, expected in anchor_cluster["source_bindings"].items():
         if name not in process_feedback_routing_feedback_fullpath_superseded_files:
-            assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected
+            assert _historical_source_sha256(name) == expected
     assert anchor_cluster["checks"]["historical_parent_immutable"] is True
     assert anchor_cluster["checks"]["two_p2_fail_first_regressions_reproduced"] is True
     assert anchor_cluster["checks"]["two_p2_regressions_pass_after_fix"] is True
@@ -11900,7 +11921,7 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
     )
     for name, expected in feedback_fullpath["source_bindings"].items():
         if name not in process_feedback_routing_long_leg_superseded_files:
-            assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected
+            assert _historical_source_sha256(name) == expected
     feedback_checks = feedback_fullpath["checks"]
     assert feedback_checks["historical_parent_immutable"] is True
     assert feedback_checks["horizontal_feedback_path_collision_fail_first_reproduced"] is True
@@ -11945,7 +11966,7 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
     )
     for name, expected in long_leg["source_bindings"].items():
         if name not in process_feedback_routing_cluster_occupancy_superseded_files:
-            assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected
+            assert _historical_source_sha256(name) == expected
     assert long_leg["checks"]["historical_parent_immutable"] is True
     assert long_leg["checks"]["long_column_label_collision_fail_first_reproduced"] is True
     assert long_leg["checks"]["grouped_local_feedback_label_avoids_long_route_leg"] is True
@@ -11993,7 +12014,7 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
     )
     for name, expected in cluster_occupancy["source_bindings"].items():
         if name not in process_feedback_routing_feedback_path_clearance_superseded_files:
-            assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected
+            assert _historical_source_sha256(name) == expected
     assert cluster_occupancy["checks"]["historical_parent_immutable"] is True
     assert cluster_occupancy["checks"]["three_p2_fail_first_regressions_reproduced"] is True
     assert cluster_occupancy["checks"]["three_p2_regressions_pass_after_fix"] is True
@@ -12038,7 +12059,7 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
     )
     for name, expected in feedback_path["source_bindings"].items():
         if name not in process_feedback_routing_feedback_route_envelope_superseded_files:
-            assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected
+            assert _historical_source_sha256(name) == expected
     assert feedback_path["checks"]["historical_parent_immutable"] is True
     assert feedback_path["checks"]["new_codex_p2_fail_first_reproduced"] is True
     assert (
@@ -12083,7 +12104,7 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
     )
     for name, expected in feedback_route["source_bindings"].items():
         if name not in feedback_five_p2_superseded_files:
-            assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected
+            assert _historical_source_sha256(name) == expected
     assert feedback_route["checks"]["historical_parent_immutable"] is True
     assert feedback_route["checks"]["two_full_route_label_collisions_fail_first_reproduced"] is True
     assert feedback_route["checks"]["two_feedback_full_route_p2_regressions_pass"] is True
@@ -12122,7 +12143,7 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
     assert set(five_p2["source_bindings"]) == feedback_five_p2_superseded_files
     for name, expected in five_p2["source_bindings"].items():
         if name not in feedback_postreview_two_p2_superseded_files:
-            assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected
+            assert _historical_source_sha256(name) == expected
     assert len(five_p2["regression_tests"]) == 5
     checks = five_p2["checks"]
     assert checks["historical_parent_immutable"] is True
@@ -12170,7 +12191,7 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
     )
     for name, expected in postreview["source_bindings"].items():
         if name not in feedback_forward_shared_source_p2_superseded_files:
-            assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected
+            assert _historical_source_sha256(name) == expected
     assert postreview["regression_tests"] == [
         "test_pr204_postreview_p2_footer_clears_crossgroup_long_label",
         "test_pr204_postreview_p2_feedback_label_clears_crossgroup_long_leg",
@@ -12226,7 +12247,7 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
     )
     for name, expected in forward_p2["source_bindings"].items():
         if name not in feedback_intermediate_local_branch_p2_superseded_files:
-            assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected
+            assert _historical_source_sha256(name) == expected
     assert len(forward_p2["regression_tests"]) == 2
     check = forward_p2["checks"]
     assert check["historical_parent_immutable"] is True
@@ -12280,7 +12301,7 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
     )
     for name, expected in intermediate["source_bindings"].items():
         if name not in feedback_transactional_peer_move_p2_superseded_files:
-            assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected
+            assert _historical_source_sha256(name) == expected
     assert len(intermediate["regression_tests"]) == 2
     assert intermediate["test_receipts"]["two_fail_first_task"] == (
         "6f27569b616a49859c59f288"
@@ -12334,7 +12355,7 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
     )
     for name, expected in transactional["source_bindings"].items():
         if name not in feedback_safe_sideports_p2_superseded_files:
-            assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected
+            assert _historical_source_sha256(name) == expected
     assert len(transactional["regression_tests"]) == 2
     assert transactional["test_receipts"]["two_fail_first_task"] == (
         "dc753a6b46bd447b81d89dea"
@@ -14571,7 +14592,7 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
         name: (
             smart_proof["base_source_bindings"][name]
             if name == native_diagram_path
-            else hashlib.sha256((ROOT / name).read_bytes()).hexdigest()
+            else _historical_source_sha256(name)
         )
         for name in (
             native_diagram_path,
@@ -14584,7 +14605,7 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
         if name == "src/schauwerk/visual/native_diagram.py":
             assert expected == clearance["predecessor_source_sha256"]
             continue
-        assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected
+        assert _historical_source_sha256(name) == expected
     assert knowledge_map_successor["checks"]["visual_acceptance"] == "pending"
     for name, expected in local_final["source_bindings"].items():
         if name == "src/schauwerk/visual/native_diagram.py":
@@ -14592,7 +14613,7 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
                 "predecessor_source_sha256"
             ]
             continue
-        assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected
+        assert _historical_source_sha256(name) == expected
     assert local_final["measured_differentials"]["published_head_900"][
         "new_render_exceptions"
     ] == 0
@@ -15215,7 +15236,7 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
         oauth_successor, "evidence_digest"
     )
     for name, expected in oauth_successor["source_bindings"].items():
-        assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected
+        assert _historical_source_sha256(name) == expected
 
     codeql_superseded_files = {
         "src/schauwerk/runner.py",
@@ -15231,7 +15252,7 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
         feedback_safe_sideports_p2_superseded_files
     )
     for name, expected in receipt["implementation_file_sha256"].items():
-        current = hashlib.sha256((ROOT / name).read_bytes()).hexdigest()
+        current = _historical_source_sha256(name)
         if name in (native_history_harness_superseded_files | {
             "src/schauwerk/resources/standalone_editor/assets.py",
             "tests/visual/test_standalone_editor_single_workspace.py",
@@ -15528,7 +15549,7 @@ def test_schaubild_full_editing_source_supersession_is_technically_bound() -> No
     # must be superseded by the new, independently bound history proof below.
     for name, digest in vector["source_bindings"].items():
         if name != editor_path:
-            assert _historical_editor_source_sha256(name) == (
+            assert _historical_source_sha256(name) == (
                 _current_source_digest(name, digest)
             )
 
@@ -15578,7 +15599,7 @@ def test_schaubild_full_editing_source_supersession_is_technically_bound() -> No
                 if name in _edge_budget_source_successor_proof()["source_bindings"]
                 else digest
             )
-            assert _historical_editor_source_sha256(name) == current
+            assert _historical_source_sha256(name) == current
 
     # This revision changes the SVG parser; preserve the historical D2 proof
     # and explicitly bind only the two new source/test artifacts.
@@ -15603,7 +15624,7 @@ def test_schaubild_full_editing_source_supersession_is_technically_bound() -> No
     assert css["evidence_digest"] == digest_mapping(css, "evidence_digest")
     assert "historical_visual_acceptance_inherited" in css["does_not_establish"]
     for name, digest in css["source_bindings"].items():
-        assert _historical_editor_source_sha256(name) == digest
+        assert _historical_source_sha256(name) == digest
 
     # Native structured knowledge maps supersede only the new editor and
     # admission sources. Older D2, full-editing and vector-PDF receipts remain
@@ -15673,7 +15694,7 @@ def test_schaubild_full_editing_source_supersession_is_technically_bound() -> No
     assert set(focus_proof["source_bindings"]) == focus_paths
     for name, digest in focus_proof["source_bindings"].items():
         assert focus_proof["base_source_bindings"][name] == knowledge_map["source_bindings"][name]
-        assert _historical_editor_source_sha256(name) == (
+        assert _historical_source_sha256(name) == (
             _after_browser_readiness_source(name, digest)
         )
     assert focus_proof["validation"]["focused_pytest_passed"] == 21
@@ -15689,7 +15710,7 @@ def test_schaubild_full_editing_source_supersession_is_technically_bound() -> No
         elif name in focus_proof["source_bindings"]:
             assert sha == focus_proof["base_source_bindings"][name]
         else:
-            assert _historical_editor_source_sha256(name) == sha
+            assert _historical_source_sha256(name) == sha
 
     pinch_successor = _edge_first_pinch_source_successor_proof()
     latest_bindings = {
@@ -15735,13 +15756,13 @@ def test_schaubild_full_editing_source_supersession_is_technically_bound() -> No
     for name, old_digest in technical["source_bindings"].items():
         if name in _CURRENT_AI_HANDOFF_SOURCES:
             continue
-        current = _historical_editor_source_sha256(name)
+        current = _historical_source_sha256(name)
         assert current == latest_bindings.get(name, old_digest)
     for name in successor["source_bindings"]:
         if name in _CURRENT_AI_HANDOFF_SOURCES:
             continue
         assert (
-            _historical_editor_source_sha256(name)
+            _historical_source_sha256(name)
             == latest_bindings[name]
         )
 
@@ -15875,7 +15896,7 @@ def test_schaubild_html_svg_hybrid_preview_source_is_technically_bound() -> None
         )
         effective = _current_source_digest(name, effective)
         if name not in _CURRENT_AI_HANDOFF_SOURCES:
-            assert _historical_editor_source_sha256(name) == effective, name
+            assert _historical_source_sha256(name) == effective, name
         # Existing files continue exactly from the smart-edge candidate; new files start empty.
         assert proof["base_source_bindings"][name] == smart["source_bindings"].get(name), name
     assert {
@@ -15933,7 +15954,7 @@ def test_schaubild_offline_html_source_successor_is_technically_bound() -> None:
             effective = readiness["source_sha256"]
         effective = _current_source_digest(path, effective)
         if path not in _CURRENT_AI_HANDOFF_SOURCES:
-            assert _historical_editor_source_sha256(path) == effective, path
+            assert _historical_source_sha256(path) == effective, path
         assert proof["base_source_bindings"][path] == smart["source_bindings"].get(path)
     assert proof["visual_acceptance"] == "pending"
     assert proof["validation"]["full_ci"] == "pending_exact_head"

@@ -2075,7 +2075,7 @@ function updateEdgeGeometry(edgeId) {
   if (!edgeState) return;
   const fromOffset = nodeOffset(overrides, edgeState.from, documentOffsetBudget);
   const toOffset = nodeOffset(overrides, edgeState.to, documentOffsetBudget);
-  if (documentMode && routingMode() === "smart" && edgeState.from !== edgeState.to) {
+  if (documentMode && routingMode() === "smart") {
     const allNodes = nodeModelsAtLiveCoordinates();
     const source = allNodes.find(node => node.id === edgeState.from);
     const target = allNodes.find(node => node.id === edgeState.to);
@@ -2104,7 +2104,8 @@ function updateEdgeGeometry(edgeId) {
       edgeState.routePoints = null;
       const box = svg.viewBox.baseVal;
       const fallback = liveEdgeGeometry(source, target, {
-        route: "standard", lane: edgeState.lane,
+        route: edgeState.from === edgeState.to ? "canvas-self-loop" : "standard",
+        selfLoop: edgeState.from === edgeState.to, lane: edgeState.lane,
         fromSide: edgeState.fromSide, toSide: edgeState.toSide,
         canvasWidth: box.width || 1, canvasHeight: box.height || 1,
       });
@@ -2350,7 +2351,8 @@ function updateIncidentEdges(sourceId) {
         if (source && target) {
           const box = svg.viewBox.baseVal;
           const preview = liveEdgeGeometry(source, target, {
-            route: "standard", lane: edge.lane,
+            route: edge.from === edge.to ? "canvas-self-loop" : "standard",
+            lane: edge.lane,
             fromSide: edge.fromSide, toSide: edge.toSide,
             selfLoop: edge.from === edge.to,
             canvasWidth: box.width || 1, canvasHeight: box.height || 1,

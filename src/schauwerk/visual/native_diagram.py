@@ -13543,7 +13543,7 @@ def render_native_editing_document(document: Mapping[str, Any]) -> str:
             source, target, edge, lane=lane
         )
         route_points = ()
-        if smart_routing and source_id != target_id:
+        if smart_routing:
             candidate = _canvas_smart_route_edge(
                 source, target, nodes,
                 from_side=edge.get("from_side"),
