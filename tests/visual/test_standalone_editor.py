@@ -517,6 +517,33 @@ const staleCanvas = serializeNativeFrameSvg({stripInputDigest: true});
 if (staleCanvas?.includes("data-input-digest=")) {
   throw new Error("stale live Canvas SVG retained an obsolete source digest");
 }
+
+// The standalone graphic must not require viewer stylesheets to hide or dim
+// irrelevant content. Offline HTML still needs the entire graph.
+let strict = true;
+let removed = 0;
+let opacity = "";
+sourceSvg.cloneNode = () => ({
+  attrs: new Map(sourceSvg.attrs),
+  classList: {contains: name => name === (strict ? "is-relevance-only" : "is-relation-focused")},
+  setAttribute(name, value) { this.attrs.set(name, String(value)); },
+  removeAttribute(name) { this.attrs.delete(name); },
+  querySelectorAll(selector) {
+    return selector === "[data-source-kind].is-muted"
+      ? [{remove() { removed += 1; }, setAttribute(name, value) {
+          if (name === "opacity") opacity = String(value);
+        }}] : [];
+  },
+});
+serializeNativeFrameSvg();
+if (removed !== 0) throw new Error("offline/full graph lost a muted item");
+const filtered = serializeNativeFrameSvg({preserveRelationView: true});
+if (removed !== 1 || filtered.includes("data-input-digest=")) {
+  throw new Error("filtered SVG retains irrelevant nodes or claims the complete input digest");
+}
+strict = false;
+serializeNativeFrameSvg({preserveRelationView: true});
+if (removed !== 1 || opacity !== "0.17") throw new Error("focus export does not preserve dimming");
 """
     subprocess.run(
         [node, "--input-type=module", "-e", script],
@@ -549,6 +576,8 @@ let currentLegacyXml = null;
 let currentNativeUrl = "/native/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa/index.html";
 let nativeCanvasRenderStale = false;
 let currentTitle = "Representation";
+let exportRequestVersion = 0;
+let preserveRelationViewSeen = false;
 let liveSvgValue = '<svg xmlns="http://www.w3.org/2000/svg" id="live"></svg>';
 let statusText = "";
 let prepared = null;
@@ -560,6 +589,7 @@ function safeFilename() { return "representation"; }
 function nativeCanvasDiffersFromRendered(canvas) { return Boolean(canvas?.dirty); }
 function serializeNativeFrameSvg(options = {}) {
   stripInputDigestSeen = Boolean(options.stripInputDigest);
+  preserveRelationViewSeen = Boolean(options.preserveRelationView);
   return liveSvgValue;
 }
 function prepareDownload(blob, filename, label) {
@@ -572,6 +602,7 @@ globalThis.fetch = async () => {
 """ + export_source + r"""
 await exportNative("svg");
 if (fetchCalls !== 0) throw new Error("live native SVG export refetched the bundle");
+if (!preserveRelationViewSeen) throw new Error("SVG export ignored current relation view");
 if (!prepared || prepared.filename !== "representation.svg" || prepared.label !== "SVG") {
   throw new Error("live native SVG export was not prepared");
 }
@@ -641,7 +672,21 @@ if (!prepared || !fallbackSvg.includes('id="fallback"')) {
 if (!fallbackSvg.includes('data-input-digest="' + "a".repeat(64) + '"')) {
   throw new Error("unchanged server SVG fallback lost its canonical input digest");
 }
-if (statusText !== "SVG bereit") throw new Error("server SVG fallback status drifted");
+if (statusText !== "SVG aus vollständiger Serveransicht bereit") throw new Error("fallback did not identify the full view");
+
+// The old fallback may resolve after a different document has been opened.
+prepared = null;
+let resolveOld;
+globalThis.fetch = () => new Promise(resolve => { resolveOld = resolve; });
+const oldExport = exportNative("svg");
+exportRequestVersion += 1;
+currentTitle = "Other";
+currentNativeUrl = "/native/bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb/index.html";
+statusText = "New document ready";
+resolveOld({ok: true, text: async () => '<svg id="old"/>'});
+await oldExport;
+if (prepared !== null) throw new Error("outdated fallback installed a download");
+if (statusText !== "New document ready") throw new Error("outdated export changed current status");
 """
     subprocess.run(
         [node, "--input-type=module", "-e", script],
@@ -651,6 +696,88 @@ if (statusText !== "SVG bereit") throw new Error("server SVG fallback status dri
     )
 
 
+
+
+
+def test_start_view_never_silently_discards_unsaved_active_document(tmp_path: Path) -> None:
+    node = shutil.which("node")
+    if node is None:
+        pytest.skip("node is not installed")
+    output = tmp_path / "editor"
+    build_standalone_editor(output)
+    app_js = (output / "app.js").read_text(encoding="utf-8")
+    source = app_js[
+        app_js.index("function activeDraftMatches("):app_js.index("function showWorkspace()")
+    ] + app_js[
+        app_js.index("function nativeCanvasSnapshot("):app_js.index("function nativeCanvasDiffersFromRendered(")
+    ]
+    script = r"""
+let currentXml = null, currentLegacyXml = null;
+let currentRepresentation = {title: "Edited", nodes: [{id: "changed"}]};
+let currentNativeDocument = null, currentNativeCanvas = null;
+let currentTitle = "Edited";
+let draft = {kind: "native", title: "Edited", representation: {title: "Edited", nodes: []}};
+const oldDraft = JSON.stringify(draft);
+let promptCount = 0, leaveCount = 0, statusText = "", confirmLeave = false;
+let pendingLoad, pendingInitialCollisionSafeLayout, pendingCreationDefaults, pendingExport;
+let editorReady = true, nativeCanvasRenderStale, renderedNativeCanvasSnapshot, pendingLegacyFallback;
+const elements = {
+  legacyFallbackButton: {}, nativeRetryButton: {}, workspace: {hidden: false},
+  startView: {hidden: true}, sourceInput: {focus() {}},
+};
+const document = {querySelectorAll() { return []; }};
+const window = {confirm() { promptCount += 1; return confirmLeave; }};
+function safeFilename(value) { return value; }
+function readLatestDraft() { return draft; }
+function setStatus(value) { statusText = value; }
+function invalidateLoadIntents() { leaveCount += 1; }
+function resetNativeHistory() {}
+function setWorkspaceActive() {}
+function syncWorkspaceMenuOpenState() {}
+function replaceEditorFrame() {}
+function clearPreparedDownload() {}
+function setError() {}
+""" + source + r"""
+showStart();
+if (promptCount !== 1 || leaveCount !== 0 || elements.workspace.hidden
+    || !statusText.includes("nicht lokal gesichert")) {
+  throw new Error("unsaved edit was silently abandoned or reported saved");
+}
+confirmLeave = true;
+showStart();
+if (leaveCount !== 1 || !elements.workspace.hidden || !statusText.includes("Ungesicherter")
+    || JSON.stringify(draft) !== oldDraft) {
+  throw new Error("explicitly leaving an unsaved edit changed the recoverable draft");
+}
+draft = {kind: "native", title: "Edited", representation: currentRepresentation};
+elements.workspace.hidden = false;
+showStart();
+if (promptCount !== 2 || leaveCount !== 2 || statusText !== "Entwurf lokal gesichert") {
+  throw new Error("recoverable document did not return directly to start");
+}
+currentRepresentation = null;
+currentNativeDocument = {schema_version: "schauwerk-native-editing-document.v1", nodes: [{id: "canvas"}]};
+currentNativeCanvas = {nodes: [{id: "canvas"}]};
+draft = {kind: "native", title: "Edited", nativeDocument: currentNativeDocument,
+  nativeCanvas: currentNativeCanvas};
+if (!activeDraftMatches(draft)) throw new Error("saved Canvas was not recognized");
+draft.nativeCanvas = {nodes: []};
+if (activeDraftMatches(draft)) throw new Error("stale Canvas was accepted");
+// A startup ACK is still pending, but the exact Canvas content is recoverable
+// from the previously saved valid native document, even with reordered keys.
+currentNativeCanvas = {nodes: [], edges: [], schauwerk: {edgeRouting: "smart"}};
+currentNativeDocument = null;
+draft.nativeCanvas = {edges: [], nodes: [], schauwerk: {edgeRouting: "smart"}};
+if (!activeDraftMatches(draft)) throw new Error("equivalent startup Canvas was marked unsaved");
+draft.nativeCanvas.nodes.push({id: "different"});
+if (activeDraftMatches(draft)) throw new Error("different startup Canvas was accepted");
+"""
+    subprocess.run(
+        [node, "--input-type=module", "-e", script],
+        check=True,
+        text=True,
+        capture_output=True,
+    )
 
 
 def test_representation_content_editor_updates_text_without_changing_structure(
