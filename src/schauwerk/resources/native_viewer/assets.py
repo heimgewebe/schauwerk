@@ -1253,6 +1253,7 @@ let relevanceOnlyEnabled = false; // Hides non-neighbors, never edits the model.
 let labelsOnDemandEnabled = false; // Session-only label visibility, never source state.
 let edgeCreateSource = null;
 let edgeReattach = null;
+let keyboardRebuildFocusId = null;
 let textEditTarget = null;
 let gesture = null;
 let observationMode = false;
@@ -1541,8 +1542,9 @@ function publishDocumentState(eventName = "native-document-change", document = d
   );
 }
 
-function rebuildDocument(document) {
+function rebuildDocument(document, { keyboardFocusId = null } = {}) {
   if (observationMode || !documentEditorHosted || !document) return;
+  keyboardRebuildFocusId = keyboardFocusId;
   sourceModel = boundedDocumentState(document);
   overrides = Object.create(null);
   publishDocumentState("native-document-rebuild", sourceModel);
@@ -1810,9 +1812,157 @@ function placeLiveEdgeConflict(edgeState, conflict) {
     } else edgeState.path.removeAttribute("stroke-dasharray");
   }
 }
+function refreshProcessLocalSelfLoops() {
+  if (documentMode || svg.dataset.intent !== "process") return;
+  const loops = [...edges.values()].filter(edge => edge.route === "process-local-self-loop");
+  if (!loops.length) return;
+  const frame = svg.viewBox.baseVal;
+  const cards = [...nodes.keys()].map(id => [id, liveBounds(id)]).filter(([, b]) => b);
+  const rect = (x, y, w, h) => [x, y, x + w, y + h];
+  const labelBox = (x, y, w, h) => rect(x - w / 2, y - h / 2, w, h);
+  const intersects = (a, b, pad = 2) => a[0] < b[2] + pad && a[2] > b[0] - pad &&
+    a[1] < b[3] + pad && a[3] > b[1] - pad;
+  // Exact line/rectangle clipping, also used for sampled nonlocal curves.
+  const hits = (a, b, box, pad = 0) => {
+    let lo = 0, hi = 1;
+    for (let axis = 0; axis < 2; axis++) {
+      const d = b[axis] - a[axis];
+      const min = box[axis] - pad, max = box[axis + 2] + pad;
+      if (Math.abs(d) < 1e-9) {
+        if (a[axis] <= min || a[axis] >= max) return false;
+      } else {
+        const p = (min - a[axis]) / d, q = (max - a[axis]) / d;
+        lo = Math.max(lo, Math.min(p, q)); hi = Math.min(hi, Math.max(p, q));
+        if (hi <= lo) return false;
+      }
+    }
+    return hi > lo;
+  };
+  const segments = points => points.slice(1).map((p, i) => [points[i], p]);
+  const pathHits = (points, box, pad = 0) => segments(points).some(([a, b]) => hits(a, b, box, pad));
+  const sharedStroke = (points, other) => segments(points).some(([a,b]) =>
+    segments(other).some(([c,d]) => [0,1].some(axis => {
+      const cross = 1-axis;
+      return Math.abs(a[cross]-b[cross]) < .01 && Math.abs(c[cross]-d[cross]) < .01 &&
+        Math.abs(a[cross]-c[cross]) < .5 &&
+        Math.min(Math.max(a[axis],b[axis]),Math.max(c[axis],d[axis])) -
+        Math.max(Math.min(a[axis],b[axis]),Math.min(c[axis],d[axis])) > 2;
+    }))
+  );
+  const pathPoints = path => {
+    if (!/^[ML0-9.,\s-]+$/.test(path)) return null;
+    const parts = [...path.matchAll(/([ML])\s*([^ML]*)/g)];
+    if (parts.length !== 4 || parts[0][1] !== "M" ||
+        parts.slice(1).some(part => part[1] !== "L")) return null;
+    const points = parts.map(part => (part[2].match(/-?(?:\d+(?:\.\d*)?|\.\d+)/g) || []).map(Number));
+    return points.every(p => p.length === 2 && p.every(Number.isFinite)) ? points : null;
+  };
+  const serialize = points => points.map((p, i) =>
+    (i === 0 ? "M " : "L ") + p.map(v => v.toFixed(1)).join(" ")
+  ).join(" ");
+  const bounds = cards.map(([id,b]) => [id, rect(b.x,b.y,b.width,b.height)]);
+  const header = svg.querySelector("#native-clip-purpose rect");
+  const headerBottom = header
+    ? Number(header.getAttribute("y")) + Number(header.getAttribute("height"))
+    : 104;
+  const inside = box => box[0] >= frame.x + 8 && box[1] >= Math.max(frame.y + 8, headerBottom) &&
+    box[2] <= frame.x + frame.width - 8 && box[3] <= frame.y + frame.height - 8;
+  const unchanged = cards.every(([id]) => {
+    const off = nodeOffset(overrides, id, documentOffsetBudget);
+    return off.x === 0 && off.y === 0;
+  });
+  const reserved = [];
+  for (const peer of edges.values()) {
+    if (peer.route === "process-local-self-loop") continue;
+    const w = Number(peer.labelRect?.getAttribute("width") || 0);
+    const h = Number(peer.labelRect?.getAttribute("height") || 0);
+    if (!w || !h) continue;
+    let points = pathPoints(peer.path.getAttribute("d") || "");
+    if (!points) {
+      try {
+        const length = peer.path.getTotalLength();
+        const count = Math.max(2, Math.min(128, Math.ceil(length / 8)));
+        points = Array.from({length: count+1}, (_, i) => {
+          const p = peer.path.getPointAtLength(length*i/count);
+          return [p.x,p.y];
+        });
+      } catch (_) { points = []; }
+    }
+    reserved.push({points, box:labelBox(peer.naturalLabelX, peer.naturalLabelY,w,h)});
+  }
+  for (const edge of loops) {
+    const base = pathPoints(edge.basePath);
+    const card = cards.find(([id]) => id === edge.from)?.[1];
+    const w = Number(edge.labelRect?.getAttribute("width") || 0);
+    const h = Number(edge.labelRect?.getAttribute("height") || 0);
+    if (!base || !card || !w || !h) continue;
+    if (unchanged) {
+      edge.path.setAttribute("d", edge.basePath);
+      edge.hitPath.setAttribute("d", edge.basePath);
+      resetEdgeLabel(edge);
+      placeLiveEdgeConflict(edge, false);
+      edge.element.removeAttribute("data-label-conflict");
+      continue;
+    }
+    const offset = nodeOffset(overrides, edge.from, documentOffsetBudget);
+    const translated = {points:base.map(([x,y]) => [x+offset.x,y+offset.y]),
+      x:edge.baseLabelX+offset.x,y:edge.baseLabelY+offset.y};
+    const boxFor = c => labelBox(c.x,c.y,w,h);
+    const fits = c => inside(boxFor(c)) && c.points.every(([x,y]) =>
+      x >= frame.x && x <= frame.x+frame.width && y >= headerBottom &&
+      y <= frame.y+frame.height);
+    const clear = c => {
+      const box = boxFor(c);
+      return fits(c) && !bounds.some(([id,b]) => intersects(box,b) ||
+        (id !== edge.from && pathHits(c.points,b,1))) &&
+        !reserved.some(peer => intersects(box,peer.box) || pathHits(c.points,peer.box,2) ||
+          pathHits(peer.points,box,2) || sharedStroke(c.points,peer.points));
+    };
+    let chosen = clear(translated) ? translated : null;
+    let fallback = fits(translated) ? translated : null;
+    if (!chosen) {
+      // Use the same local rail geometry as the server. Reorient the complete
+      // labelled loop, never drop back to an unrelated unlabelled Bezier.
+      outer: for (const extra of [0,12,24,40,64,88,116,148,184]) {
+        for (const side of ["bottom","right","top","left"]) {
+          const horizontal = side === "top" || side === "bottom";
+          const dim = horizontal ? card.width : card.height;
+          const across = horizontal ? h : w, along = horizontal ? w : h;
+          const origin = horizontal ? card.x : card.y;
+          const boundary = side === "bottom" ? card.y+card.height : side === "top" ? card.y :
+            side === "right" ? card.x+card.width : card.x;
+          const sign = side === "bottom" || side === "right" ? 1 : -1;
+          const half = Math.min(dim/2-8,along/2+14+extra/5);
+          if (!(half > 0)) continue;
+          for (const shift of [0,-24,24,-48,48,-72,72]) {
+            const centre = Math.max(half+6,Math.min(dim-half-6,dim/2+shift));
+            const rail = boundary+sign*(across/2+8+extra);
+            const lo = origin+centre-half, hi = origin+centre+half;
+            const candidate = horizontal
+              ? {points:[[lo,boundary],[lo,rail],[hi,rail],[hi,boundary]],x:origin+centre,y:rail}
+              : {points:[[boundary,lo],[rail,lo],[rail,hi],[boundary,hi]],x:rail,y:origin+centre};
+            if (!fallback && fits(candidate)) fallback = candidate;
+            if (clear(candidate)) { chosen = candidate; break outer; }
+          }
+        }
+      }
+    }
+    const geometry = chosen || fallback || translated;
+    const path = serialize(geometry.points);
+    edge.path.setAttribute("d",path); edge.hitPath.setAttribute("d",path);
+    edge.naturalLabelX = geometry.x; edge.naturalLabelY = geometry.y;
+    placeLiveLabel(edge,geometry.x,geometry.y);
+    placeLiveEdgeConflict(edge,!chosen);
+    if (chosen) edge.element.removeAttribute("data-label-conflict");
+    else edge.element.dataset.labelConflict = "true";
+    reserved.push({points:geometry.points,box:boxFor(geometry)});
+  }
+}
+
 function relocateLiveEdgeLabels() {
   // Other native representation kinds keep their existing routing contract.
   if (!documentMode && !knowledgeMapOverview) {
+    refreshProcessLocalSelfLoops();
     refreshSharedLabelCutout();
     return;
   }
@@ -2073,6 +2223,8 @@ function knowledgePathAvoidsCards(edge, candidate) {
 function updateEdgeGeometry(edgeId) {
   const edgeState = edges.get(edgeId);
   if (!edgeState) return;
+  // The local loop planner owns both its stroke and label after node updates.
+  if (!documentMode && edgeState.route === "process-local-self-loop") return;
   const fromOffset = nodeOffset(overrides, edgeState.from, documentOffsetBudget);
   const toOffset = nodeOffset(overrides, edgeState.to, documentOffsetBudget);
   if (documentMode && routingMode() === "smart") {
@@ -3135,11 +3287,11 @@ function zoomBy(factor, anchor = null) {
 }
 
 // Undo/Redo and native edits replace the embedded iframe after a successful
-// server render. Carry only a user-controlled view across that transactional
-// replacement: a new document or automatic fit must start with its own view.
+// server render. Carry the user-controlled view or a keyboard relation
+// target across that exact replacement, never into a different document.
 const MANUAL_VIEW_HANDOFF_KEY = "__schauwerkNativeManualViewHandoffV1";
 window.addEventListener("pagehide", () => {
-  if (!documentEditorHosted || autoFitActive) return;
+  if (!documentEditorHosted || (autoFitActive && !keyboardRebuildFocusId)) return;
   try {
     const oldFrame = window.frameElement;
     const host = window.parent;
@@ -3149,10 +3301,13 @@ window.addEventListener("pagehide", () => {
     if (!oldFrame?.inert || !host.document.body.classList.contains("workspace-active") ||
         host.document.querySelector("#nativeRetryButton")?.hidden === false ||
         host.document.querySelector("#editorFrame") !== oldFrame) return;
-    if (![view.x, view.y, view.scale].every(Number.isFinite) || view.scale <= 0) return;
+    const manualView = !autoFitActive && [view.x, view.y, view.scale].every(Number.isFinite)
+      && view.scale > 0 ? { x: view.x, y: view.y, scale: view.scale } : null;
+    if (!manualView && !keyboardRebuildFocusId) return;
     host[MANUAL_VIEW_HANDOFF_KEY] = {
       oldFrame,
-      view: { x: view.x, y: view.y, scale: view.scale },
+      view: manualView,
+      focusNodeId: keyboardRebuildFocusId,
       expiresAt: Date.now() + 45000,
     };
   } catch (_) { /* A foreign embed cannot transfer view-only state. */ }
@@ -3171,12 +3326,51 @@ function restoreManualViewAfterNativeFrameReplacement() {
         pending.oldFrame === frame || pending.oldFrame?.isConnected ||
         !pending.oldFrame?.inert || Date.now() > pending.expiresAt) return;
     const saved = pending.view;
-    if (![saved?.x, saved?.y, saved?.scale].every(Number.isFinite) ||
-        saved.scale <= 0 || saved.scale > MAX_SCALE) return;
-    view = { x: saved.x, y: saved.y, scale: saved.scale };
-    autoFitActive = false;
-    applyView();
+    if ([saved?.x, saved?.y, saved?.scale].every(Number.isFinite) &&
+        saved.scale > 0 && saved.scale <= MAX_SCALE) {
+      view = { x: saved.x, y: saved.y, scale: saved.scale };
+      autoFitActive = false;
+      applyView();
+    }
+    if (typeof pending.focusNodeId === "string")
+      nodes.get(pending.focusNodeId)?.focus({ preventScroll: true });
   } catch (_) { /* Standalone or cross-origin viewers retain default fit. */ }
+}
+
+// Node activation completes the same pending relation operation regardless
+// of whether the user uses a pointer or a keyboard.
+function completePendingEdgeTarget(sourceId, finishActivation = () => {}, keyboard = false) {
+  if (!documentEditorHosted || observationMode || !nodes.has(sourceId) ||
+      (!edgeCreateSource && !edgeReattach)) return false;
+  const createSource = edgeCreateSource;
+  const reattach = edgeReattach;
+  const snapshot = documentSnapshot();
+  edgeCreateSource = null;
+  edgeReattach = null;
+  let changed = false;
+  if (snapshot && reattach) {
+    const edge = snapshot.edges.find(item => String(item.id) === reattach.edgeId);
+    if (edge && edge[reattach.endpoint] !== sourceId) {
+      edge[reattach.endpoint] = sourceId;
+      edge.source = cloneJson(edge.source || {});
+      edge.source[reattach.endpoint === "from" ? "fromNode" : "toNode"] = sourceId;
+      changed = true;
+    } else {
+      setStatus("Verbindung unverändert");
+    }
+  } else if (snapshot && createSource &&
+      documentMutationWithinProductLimits(snapshot, { addEdges: 1 })) {
+    const id = uniqueId("edge_", [...snapshot.nodes, ...snapshot.edges]);
+    snapshot.edges.push({
+      id, from: createSource, to: sourceId, label: "",
+      from_side: null, to_side: null, from_end: "none", to_end: "arrow",
+      source: {},
+    });
+    changed = true;
+  }
+  finishActivation();
+  if (changed) rebuildDocument(snapshot, { keyboardFocusId: keyboard ? sourceId : null });
+  return true;
 }
 
 function nodeFromTarget(target) {
@@ -3260,6 +3454,8 @@ for (const node of svg.querySelectorAll('[data-source-kind="node"]')) {
     if (observationMode) return;
     if (event.key === "Enter" || event.key === " ") {
       event.preventDefault();
+      if (event.repeat || event.isComposing) return;
+      if (completePendingEdgeTarget(sourceId, undefined, true)) return;
       selectNode(sourceId);
       if (knowledgeMapOverview && view.scale < COMPACT_OVERVIEW_SCALE)
         focusOverviewTarget({ nodeId: sourceId });
@@ -3671,52 +3867,11 @@ viewport.addEventListener("pointerdown", (event) => {
   }
   if (node) {
     const sourceId = node.dataset.sourceId;
-    if (documentEditorHosted && edgeReattach && sourceId) {
-      const document = documentSnapshot();
-      const edgeItem = document.edges.find(
-        (item) => String(item.id) === edgeReattach.edgeId,
-      );
-      if (edgeItem) {
-        edgeItem[edgeReattach.endpoint] = sourceId;
-        edgeItem.source = cloneJson(edgeItem.source || {});
-        if (edgeReattach.endpoint === "from") edgeItem.source.fromNode = sourceId;
-        else edgeItem.source.toNode = sourceId;
-      }
-      edgeReattach = null;
+    if (completePendingEdgeTarget(sourceId, () => {
       activePointers.delete(event.pointerId);
       try { viewport.releasePointerCapture(event.pointerId); } catch (_) { /* frame rebuild */ }
       releasePointerAutoFitIfIdle();
-      rebuildDocument(document);
-      return;
-    }
-    if (documentEditorHosted && edgeCreateSource && sourceId) {
-      const document = documentSnapshot();
-      if (!documentMutationWithinProductLimits(document, { addEdges: 1 })) {
-        edgeCreateSource = null;
-        activePointers.delete(event.pointerId);
-        try { viewport.releasePointerCapture(event.pointerId); } catch (_) { /* no rebuild */ }
-        releasePointerAutoFitIfIdle();
-        return;
-      }
-      const edgeId = uniqueId("edge_", [...document.nodes, ...document.edges]);
-      document.edges.push({
-        id: edgeId,
-        from: edgeCreateSource,
-        to: sourceId,
-        label: "",
-        from_side: null,
-        to_side: null,
-        from_end: "none",
-        to_end: "arrow",
-        source: {},
-      });
-      edgeCreateSource = null;
-      activePointers.delete(event.pointerId);
-      try { viewport.releasePointerCapture(event.pointerId); } catch (_) { /* frame rebuild */ }
-      releasePointerAutoFitIfIdle();
-      rebuildDocument(document);
-      return;
-    }
+    })) return;
     // Deferred standalone routing pauses during a new gesture; a click
     // without movement must not abandon routes still waiting for certification.
     selectNode(sourceId);
@@ -3991,18 +4146,20 @@ if (documentEditorHosted) {
     });
     rebuildDocument(document);
   });
-  addEdgeButton?.addEventListener("click", () => {
+  addEdgeButton?.addEventListener("click", (event) => {
     if (observationMode) return;
     if (!selectedId) {
       setStatus("Für eine neue Verbindung zuerst ein Element auswählen");
       return;
     }
     edgeCreateSource = selectedId;
+    edgeReattach = null;
     if (editControls instanceof HTMLDetailsElement) editControls.open = false;
+    if (event.detail === 0) nodes.get(selectedId)?.focus({ preventScroll: true });
     setStatus("Ziel für die neue Verbindung auswählen");
   });
   editTextButton?.addEventListener("click", openTextEditor);
-  const beginReattach = (endpoint) => {
+  const beginReattach = (endpoint, keyboard) => {
     if (observationMode) return;
     if (!selectedEdgeId) {
       setStatus("Zuerst eine Verbindung auswählen");
@@ -4011,14 +4168,18 @@ if (documentEditorHosted) {
     edgeCreateSource = null;
     edgeReattach = { edgeId: selectedEdgeId, endpoint };
     if (editControls instanceof HTMLDetailsElement) editControls.open = false;
+    if (keyboard) {
+      const edge = sourceModel.edges.find(item => String(item.id) === selectedEdgeId);
+      nodes.get(String(edge?.[endpoint] || ""))?.focus({ preventScroll: true });
+    }
     setStatus(
       endpoint === "from"
         ? "Neuen Anfang auswählen"
         : "Neues Ziel auswählen"
     );
   };
-  reattachSourceButton?.addEventListener("click", () => beginReattach("from"));
-  reattachTargetButton?.addEventListener("click", () => beginReattach("to"));
+  reattachSourceButton?.addEventListener("click", event => beginReattach("from", event.detail === 0));
+  reattachTargetButton?.addEventListener("click", event => beginReattach("to", event.detail === 0));
   deleteSelectionButton?.addEventListener("click", deleteSelection);
   saveTextButton?.addEventListener("click", () => {
     if (observationMode) return;
@@ -4120,6 +4281,9 @@ window.addEventListener("keydown", (event) => {
   if (event.key !== "Escape") return;
   const pendingEdgeOperation = Boolean(edgeCreateSource || edgeReattach ||
     gesture?.kind === "connection");
+  const cancelFocus = edgeCreateSource
+    ? nodes.get(edgeCreateSource)
+    : edges.get(edgeReattach?.edgeId)?.element;
   if (gesture?.kind === "connection") {
     clearConnectionPreview();
     gesture = null;
@@ -4132,7 +4296,10 @@ window.addEventListener("keydown", (event) => {
   edgeCreateSource = null;
   edgeReattach = null;
   selectNode(null);
-  if (pendingEdgeOperation) setStatus("Verbindungsaktion abgebrochen");
+  if (pendingEdgeOperation) {
+    cancelFocus?.focus({ preventScroll: true });
+    setStatus("Verbindungsaktion abgebrochen");
+  }
 });
 
 const startupStatus = status.textContent;

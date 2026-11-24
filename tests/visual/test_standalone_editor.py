@@ -1793,8 +1793,9 @@ if (nativeCanvasDraftSaves.length !== 2) {
 
 
 
+@pytest.mark.parametrize("reply", ["json-422", "html-502", "html-200"])
 def test_json_canvas_native_rejection_exposes_legacy_fallback(
-    tmp_path: Path,
+    tmp_path: Path, reply: str,
 ) -> None:
     node = shutil.which("node")
     if node is None:
@@ -1895,9 +1896,10 @@ globalThis.fetch = async () => {
     throw new Error("legacy converter ran before native rejection");
   }
   return {
-    ok: false,
-    status: 422,
+    ok: __RESPONSE_OK__,
+    status: __RESPONSE_STATUS__,
     async json() {
+      if (__NON_JSON__) throw new SyntaxError("Unexpected token < in JSON");
       return {error: "group backgrounds are not supported by the native editor"};
     },
   };
@@ -1926,6 +1928,11 @@ if (!elements.workspace.hidden || elements.startView.hidden) {
 if (!errorText.includes("Das Original wurde nicht verändert")) {
   throw new Error("native JSON Canvas rejection did not explain source preservation");
 }
+if (__NON_JSON__ && (!errorText.includes("keine lesbare JSON-Antwort")
+    || !errorText.includes("HTTP " + __RESPONSE_STATUS__)
+    || errorText.includes("Unexpected token"))) {
+  throw new Error("non-JSON renderer response was misreported as input JSON error");
+}
 if (!statusText.includes("Nativer Import abgelehnt") || !statusText.includes("Legacy verfügbar")) {
   throw new Error("native JSON Canvas rejection did not report generic legacy availability");
 }
@@ -1933,6 +1940,10 @@ if (nativeHistoryResetCalls !== 1) {
   throw new Error("opening an imported document did not reset native history once");
 }
 """
+    status = int(reply.split("-")[1])
+    script = (script.replace("__RESPONSE_STATUS__", str(status))
+              .replace("__RESPONSE_OK__", "true" if status == 200 else "false")
+              .replace("__NON_JSON__", "true" if reply.startswith("html-") else "false"))
     subprocess.run(
         [node, "--input-type=module", "-e", script],
         check=True,
@@ -1941,8 +1952,9 @@ if (nativeHistoryResetCalls !== 1) {
     )
 
 
+@pytest.mark.parametrize("non_json", [False, True])
 def test_native_rebuild_422_rerenders_last_live_valid_state(
-    tmp_path: Path,
+    tmp_path: Path, non_json: bool,
 ) -> None:
     node = shutil.which("node")
     if node is None:
@@ -2046,6 +2058,7 @@ globalThis.fetch = async (_url, options) => {
       ok: false,
       status: 422,
       async json() {
+        if (__NON_JSON_422__) throw new SyntaxError("Unexpected token < in JSON");
         return {error: "native JSON Canvas document exceeds product complexity limits"};
       },
     };
@@ -2090,6 +2103,10 @@ if (!elements.nativeRetryButton.hidden) {
 if (!errorText.includes("abgelehnte Änderung wurde verworfen")) {
   throw new Error("permanent rejection did not explain candidate rollback");
 }
+if (__NON_JSON_422__ && (!errorText.includes("keine lesbare JSON-Antwort (HTTP 422)")
+    || errorText.includes("Unexpected token"))) {
+  throw new Error("non-JSON permanent rejection lost HTTP status or used parser text");
+}
 if (!statusText.includes("letzter gültiger Dokumentzustand wiederhergestellt")) {
   throw new Error("permanent rejection did not report the restored live-valid state");
 }
@@ -2103,6 +2120,7 @@ if (nativeCanvasDraftVersions.join(",") !== "2") {
   throw new Error("permanent rejection recovery did not persist exactly the restored live-valid state");
 }
 """
+    script = script.replace("__NON_JSON_422__", "true" if non_json else "false")
     subprocess.run(
         [node, "--input-type=module", "-e", script],
         check=True,
@@ -2955,6 +2973,54 @@ def test_native_artifact_get_and_head_reject_non_loopback_host(tmp_path: Path) -
         assert head_response.read() == b""
         connection.close()
     finally:
+        server.shutdown()
+        server.server_close()
+        thread.join(timeout=5)
+
+
+def test_native_render_endpoint_invalid_field_types_preserve_valid_document(
+    tmp_path: Path,
+) -> None:
+    output = tmp_path / "editor"
+    build_standalone_editor(output)
+    handler = partial(_EditorRequestHandler, directory=str(output))
+    server = ThreadingHTTPServer(("127.0.0.1", 0), handler)
+    thread = threading.Thread(target=server.serve_forever, daemon=True)
+    thread.start()
+    connection = HTTPConnection("127.0.0.1", int(server.server_address[1]), timeout=10)
+    try:
+        def post(value: dict) -> tuple[int, dict]:
+            payload = json.dumps(value).encode("utf-8")
+            connection.request("POST", NATIVE_API_PATH, body=payload,
+                               headers={"Content-Type": "application/json"})
+            response = connection.getresponse()
+            assert response.getheader("Content-Type").startswith("application/json")
+            return response.status, json.loads(response.read())
+
+        good = _golden_representation("decision-flow-v1.json")
+        status, valid = post(good)
+        assert status == 200
+        for section, field in [
+            (None, "intent"), ("nodes", "kind"), ("nodes", "group"),
+            ("edges", "kind"), ("edges", "from"), ("edges", "to"),
+        ]:
+            for invalid in ({}, [], False, 17):
+                candidate = json.loads(json.dumps(good))
+                target = candidate if section is None else candidate[section][0]
+                target[field] = invalid
+                status, body = post(candidate)
+                assert status == 422
+                path = field if section is None else f"{section}[0].{field}"
+                assert path + " must be a string" in body["error"]
+        connection.request("GET", valid["url"])
+        response = connection.getresponse()
+        assert response.status == 200
+        assert b'id="nativeViewport"' in response.read()
+        status, recovered = post(good)
+        assert status == 200
+        assert recovered["input_digest"] == valid["input_digest"]
+    finally:
+        connection.close()
         server.shutdown()
         server.server_close()
         thread.join(timeout=5)

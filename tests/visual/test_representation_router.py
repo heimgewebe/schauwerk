@@ -285,6 +285,32 @@ def test_unknown_edge_target_fails_closed() -> None:
         validate_representation_input(changed)
 
 
+@pytest.mark.parametrize(
+    ("container", "field", "path"),
+    [
+        (None, "intent", "intent"),
+        ("nodes", "kind", "nodes[0].kind"),
+        ("nodes", "group", "nodes[0].group"),
+        ("edges", "kind", "edges[0].kind"),
+        ("edges", "from", "edges[0].from"),
+        ("edges", "to", "edges[0].to"),
+    ],
+)
+@pytest.mark.parametrize("invalid", [{}, [], False, 17, None])
+def test_invalid_representation_field_types_have_specific_errors(
+    container: str | None, field: str, path: str, invalid: object,
+) -> None:
+    raw = _minimal_representation()
+    target = raw if container is None else raw[container][0]
+    target[field] = invalid
+    if field == "group" and invalid is None:
+        assert validate_representation_input(raw)["nodes"][0]["group"] is None
+    else:
+        with pytest.raises(RepresentationError) as exc:
+            validate_representation_input(raw)
+        assert path + " must be a string" in str(exc.value)
+
+
 def test_requested_format_must_be_a_known_string() -> None:
     raw = json.loads(FIXTURE.read_text())
     raw["requested_formats"] = [{"not": "a string"}]
