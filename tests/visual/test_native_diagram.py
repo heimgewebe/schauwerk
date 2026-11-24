@@ -14,6 +14,8 @@ from schauwerk.visual.native_diagram import (
     _cubic_hull_intersects_box,
     _ellipsize_to_width,
     _estimated_wrap_width,
+    _process_label_path_distance_sq,
+    _process_svg_path_hits_box,
     _rebalance_single_word_lines,
     _split_token_to_width,
     _xml_escape,
@@ -4745,7 +4747,7 @@ def _two_process_self_loops_model(node_count: int = 1) -> dict:
 
 
 @pytest.mark.parametrize("node_count", [1, 12])
-def test_two_process_self_loop_labels_pack_without_changing_arc_lanes(node_count: int) -> None:
+def test_two_process_self_loop_labels_pack_with_own_distinct_paths(node_count: int) -> None:
     raw = _two_process_self_loops_model(node_count)
     # The minimal one-node model on 7c9b41e put 198x48 and 212x48 labels
     # at (257.5, 108) and (261, 108): centres only 10.5 px apart.
@@ -4756,14 +4758,65 @@ def test_two_process_self_loop_labels_pack_without_changing_arc_lanes(node_count
     solo = copy.deepcopy(raw)
     solo["edges"] = solo["edges"][:1]
     singleton = _parse(render_native_diagram(solo))
-    assert _edge_label_boxes(root)["loop_a"] == _edge_label_boxes(singleton)["loop_a"]
-    assert _edge_paths(root)["loop_a"] == _edge_paths(singleton)["loop_a"]
     assert len(set(_edge_paths(root).values())) == 2
+    assert _process_label_path_distance_sq(
+        _edge_paths(root)["loop_a"], _edge_label_boxes(root)["loop_a"]
+    ) <= _process_label_path_distance_sq(
+        _edge_paths(singleton)["loop_a"], _edge_label_boxes(singleton)["loop_a"]
+    )
+    paths, boxes = _edge_paths(root), _edge_label_boxes(root)
+    for edge_id, box in boxes.items():
+        own_distance = _process_label_path_distance_sq(paths[edge_id], box)
+        assert own_distance is not None and own_distance <= 100**2
+        assert all(_process_label_path_distance_sq(path, box) > own_distance
+                   for other_id, path in paths.items() if other_id != edge_id)
     if node_count == 1:
-        assert _edge_paths(root) == {
-            "loop_a": "M 298.0 218.1 C 376.0 174.1, 376.0 323.5, 298.0 279.5",
-            "loop_b": "M 298.0 218.1 C 390.0 174.1, 390.0 323.5, 298.0 279.5",
-        }
+        # The previous second path left its label hundreds of units away.
+        # Both loops may now move; the separate singleton test preserves the
+        # unchanged one-relation case, not the old broken stacked geometry.
+        assert paths["loop_b"] != "M 298.0 218.1 C 390.0 174.1, 390.0 323.5, 298.0 279.5"
+
+
+@pytest.mark.parametrize("node_count,source_index", [(2, 0), (6, 0), (12, 0), (12, 11)])
+@pytest.mark.parametrize("labels", [
+    ["Selbstbezug 0", "Selbstbezug 1"],
+    ["erster selbstbezug mit langem text", "zweizeiliger selbstbezug der karte"],
+    [f"Selbstbezug {index}" for index in range(4)],
+])
+def test_process_loop_label_stays_with_its_own_path(node_count, source_index, labels) -> None:
+    raw = _minimal_process_model(node_count)
+    source_id = f"n{source_index}"
+    raw["edges"] = [
+        {"id": f"loop_{i}", "from": source_id, "to": source_id,
+         "label": label, "kind": "flow"}
+        for i, label in enumerate(labels)
+    ]
+
+    def measure(model):
+        root = _parse(render_native_diagram(model))
+        boxes, paths, cards = _edge_label_boxes(root), _edge_paths(root), _node_boxes(root)
+        width, height = map(float, root.attrib["viewBox"].split()[2:])
+        assert len(set(paths.values())) == len(labels)
+        for edge_id, box in boxes.items():
+            x, y, lw, lh = box
+            distance = _process_label_path_distance_sq(paths[edge_id], box)
+            assert distance is not None and distance <= 100**2
+            assert 0 <= x and x + lw <= width and 104 <= y and y + lh <= height
+            assert all(not _boxes_overlap(box, card) for card in cards.values())
+            for card_id, card in cards.items():
+                if card_id != source_id:
+                    assert not _process_svg_path_hits_box(paths[edge_id], card, padding=0)
+            for other_id, other_box in boxes.items():
+                if edge_id == other_id:
+                    continue
+                assert not _boxes_overlap(box, other_box)
+                assert not _process_svg_path_hits_box(paths[other_id], box)
+                assert _process_label_path_distance_sq(paths[other_id], box) > distance
+        return boxes, paths, root.attrib["viewBox"]
+
+    forward = measure(raw)
+    raw["edges"].reverse()
+    assert measure(raw) == forward
 
 
 @pytest.mark.parametrize("edge_id", ["loop_a", "loop_b"])
