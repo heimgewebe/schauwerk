@@ -509,6 +509,21 @@ def _grouped_process_layout(
     return positions, regions, width, height
 
 
+def _knowledge_map_compact_layout(
+    node_count: int, edges: Sequence[Mapping[str, Any]],
+) -> bool:
+    """Bound the richer layout by relation topology, not appended isolated cards."""
+    connected = {
+        str(edge[endpoint])
+        for edge in edges
+        if edge["from"] != edge["to"]
+        for endpoint in ("from", "to")
+    }
+    # The existing hub finder is capped at 32 cards. Retain a hard total
+    # complexity bound even when most cards are disconnected.
+    return node_count <= 32 and len(connected) <= _KNOWLEDGE_MAP_COMPACT_NODE_LIMIT
+
+
 def _knowledge_map_ordered_columns(
     columns: list[tuple[str | None, str, list[Mapping[str, Any]]]],
     edges: Sequence[Mapping[str, Any]],
@@ -526,7 +541,7 @@ def _knowledge_map_ordered_columns(
     # Small-map optimization is deliberately bounded by both work and
     # previously accepted larger knowledge-map render revisions.
     compact_proxy = (
-        sum(map(len, order)) <= _KNOWLEDGE_MAP_COMPACT_NODE_LIMIT
+        _knowledge_map_compact_layout(sum(map(len, order)), edges)
         and len(edges) <= 64 and len(columns) <= 6
         and max(map(len, order)) <= 8
     )
@@ -919,7 +934,7 @@ def _layout(
             row_count = max(1, len(column_nodes))
             centered_hub = (
                 model["intent"] == "knowledge_map"
-                and len(nodes) <= _KNOWLEDGE_MAP_COMPACT_NODE_LIMIT
+                and _knowledge_map_compact_layout(len(nodes), model["edges"])
                 and group_id is None and label == "Leitbegriff"
                 and row_count == 1 and maximum_rows >= 3
             )
@@ -7925,7 +7940,7 @@ def render_native_diagram(
     for region_index, (group_id, label, x, y, region_width, region_height) in enumerate(regions):
         if (
             intent == "knowledge_map"
-            and len(model["nodes"]) <= _KNOWLEDGE_MAP_COMPACT_NODE_LIMIT
+            and _knowledge_map_compact_layout(len(model["nodes"]), model["edges"])
             and group_id is None and label == "Leitbegriff"
         ):
             # A placement column does not create a fifth thematic group.
@@ -10649,7 +10664,10 @@ def render_native_diagram(
             if not blocked_by_peer_label and not blocked_by_card:
                 continue
             for trial in _process_near_path_label_boxes(
-                own_path, old_box, limit=320
+                # Small and medium maps can afford a few more candidates
+                # before falling back to the viewer's independent correction.
+                # Keep the existing cap on dense graphs.
+                own_path, old_box, limit=512 if len(paint_edges) <= 40 else 320
             ):
                 if (
                     trial[0] < 8 or trial[0] + trial[2] > width - 8

@@ -141,6 +141,21 @@ def test_build_standalone_editor_writes_deterministic_bundle(tmp_path: Path) -> 
     }
     assert manifest["native_renderer"]["admission"] == "representation-or-bounded-native-import"
     assert "representation-knowledge-map-native-cutover" not in manifest["does_not_establish"]
+    assert set(manifest["native_renderer"]["supported_outputs"]) == {
+        "schauwerk-representation-input.v1", "json-canvas-1.0", "svg",
+        "png", "pdf", "pdf-vector", "html-offline",
+    }
+    assert set(manifest["native_renderer"]["supported_outputs"]) <= set(manifest["supported_outputs"])
+    assert manifest["native_renderer"]["output_constraints"] == {
+        "schauwerk-representation-input.v1": "representation-project-export",
+        "json-canvas-1.0": "canvas-project-export",
+        "pdf": "raster-pdf-download",
+        "pdf-vector": "native-browser-print-dialog",
+        "html-offline": "json-canvas-only-read-only-html-download",
+    }
+    assert "native-png-export" not in manifest["does_not_establish"]
+    assert "representation-source-writeback" not in manifest["does_not_establish"]
+    assert "automatic-overwrite-of-original-source-file" in manifest["does_not_establish"]
     assert {item["path"] for item in manifest["files"]} == {
         "app.js",
         "canvas-import.js",

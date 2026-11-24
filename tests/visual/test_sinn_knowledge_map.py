@@ -1010,6 +1010,90 @@ def test_reported_sinn_16_24_hub_has_unique_degree_and_theme_breadth() -> None:
     assert abs(positions["sinn"][0] + 125 - width / 2) < 150
 
 
+def test_unconnected_sources_do_not_move_existing_sinn_nodes_at_compact_boundary() -> None:
+    """Appending a disconnected card must not change the connected graph's layout."""
+    from schauwerk.visual.native_diagram import _layout
+    from schauwerk.visual.representation import validate_representation_input
+
+    model = _reported_sinn_16_24_model()
+    original_ids = {node["id"] for node in model["nodes"]}
+    positions, regions, _, _ = _layout(validate_representation_input(model))
+    baseline = {node_id: positions[node_id] for node_id in original_ids}
+    for index in range(3):
+        model["nodes"].append({
+            "id": f"quelle_extra_{index}", "label": f"Weitere Quelle {index}",
+            "kind": "concept", "group": "quellen",
+        })
+        positions, current_regions, _, _ = _layout(validate_representation_input(model))
+        assert {node_id: positions[node_id] for node_id in original_ids} == baseline
+        assert [r[:2] for r in current_regions] == [r[:2] for r in regions]
+    assert len(model["nodes"]) == 19
+    root = ET.fromstring(render_native_diagram(model))
+    assert not any(e.get("data-renderer-region") == "ungrouped" for e in root.iter())
+
+
+def test_audit_minimal_knowledge_map_raw_svg_has_no_overlapping_labels() -> None:
+    """Original 23 November audit reproduction: e12 and e21 overlapped by 1976."""
+    from schauwerk.visual.native_diagram import (
+        _process_label_path_distance_sq,
+        _process_svg_path_hits_box,
+    )
+
+    model = {
+        "schema_version": "schauwerk-representation-input.v1",
+        "id": "audit_routing", "title": "Audit Kanten",
+        "purpose": "Prüfung zulässiger Kantenkonstellationen", "intent": "knowledge_map",
+        "groups": [{"id": f"g{i}", "label": f"Thema {i}"} for i in range(4)],
+        "nodes": [
+            {"id": f"n{i}", "label": f"Begriff {i}", "kind": "concept", "group": f"g{i%4}"}
+            for i in (0, 1, 2, 3, 5, 6, 7, 9, 10, 11, 14, 15)
+        ],
+        "edges": [
+            {"id": f"e{i}", "from": f"n{a}", "to": f"n{b}",
+             "label": f"Bezug {i}", "kind": kind}
+            for i, a, b, kind in [
+                (1, 14, 7, "risk"), (2, 0, 15, "feedback"),
+                (3, 1, 9, "association"), (4, 1, 7, "association"),
+                (6, 14, 3, "risk"), (12, 5, 3, "flow"),
+                (14, 10, 5, "association"), (15, 3, 10, "flow"),
+                (17, 0, 10, "flow"), (18, 9, 14, "flow"),
+                (19, 11, 9, "feedback"), (20, 2, 11, "flow"),
+                (21, 7, 5, "risk"), (23, 6, 11, "feedback"),
+            ]
+        ],
+        "requirements": {}, "requested_formats": [],
+    }
+    svg = render_native_diagram(model)
+    root = ET.fromstring(svg)
+    edges = _edges(root)
+
+    def box(element):
+        rect = element.find(SVG + "rect")
+        return tuple(float(rect.get(key)) for key in ("x", "y", "width", "height"))
+
+    labels = {key: box(value) for key, value in edges.items()}
+    paths = {key: value.find(SVG + "path").get("d") for key, value in edges.items()}
+    cards = [box(e) for e in root.iter() if e.get("data-source-kind") == "node"]
+    def overlap(a, b):
+        return (a[0] < b[0] + b[2] and b[0] < a[0] + a[2]
+                and a[1] < b[1] + b[3] and b[1] < a[1] + a[3])
+
+    assert len(labels) == 14
+    for edge_id, bounds in labels.items():
+        assert not any(overlap(bounds, other) for key, other in labels.items() if key != edge_id)
+        assert not any(overlap(bounds, card) for card in cards)
+    for edge_id in ("e12", "e21"):
+        assert _process_label_path_distance_sq(paths[edge_id], labels[edge_id]) <= 320**2
+    # Only the actually relocated label needs the full collision assertion;
+    # the pre-existing peer label must not be displaced by a second pass.
+    assert any(
+        all(not _process_svg_path_hits_box(path, labels[edge_id])
+            for key, path in paths.items() if key != edge_id)
+        for edge_id in ("e12", "e21")
+    )
+    assert svg == render_native_diagram(copy.deepcopy(model))
+
+
 def test_reported_sinn_16_24_central_render_has_no_foreign_card_or_label_hits() -> None:
     """A central hub is useful only if all paths and captions remain readable."""
     from math import dist
