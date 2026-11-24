@@ -2700,7 +2700,35 @@ function syncWorkspaceBarHeight() {
   }
 }
 
+function activeDraftMatches(draft) {
+  if (!draft || safeFilename(draft.title || "Schaubild") !== safeFilename(currentTitle)) return false;
+  try {
+    if (currentRepresentation) {
+      return draft.kind === "native"
+        && JSON.stringify(draft.representation) === JSON.stringify(currentRepresentation);
+    }
+    if (currentNativeDocument || currentNativeCanvas) {
+      return draft.kind === "native" && Boolean(currentNativeDocument && currentNativeCanvas)
+        && JSON.stringify(draft.nativeDocument) === JSON.stringify(currentNativeDocument)
+        && JSON.stringify(draft.nativeCanvas) === JSON.stringify(currentNativeCanvas);
+    }
+    return draft.kind === "legacy" && draft.xml === (currentXml || currentLegacyXml);
+  } catch (_) {
+    return false;
+  }
+}
+
 function showStart() {
+  const hasDocument = Boolean(currentXml || currentRepresentation || currentNativeDocument
+    || currentNativeCanvas || currentLegacyXml);
+  const draftSaved = hasDocument && activeDraftMatches(readLatestDraft());
+  if (hasDocument && !draftSaved && !window.confirm(
+    "Der aktuelle Entwurf ist nicht lokal gesichert. Ohne Sicherung zur Startseite zurückkehren? "
+    + "Ein zuvor gesicherter Entwurf bleibt erhalten.",
+  )) {
+    setStatus("Entwurf nicht lokal gesichert · bitte zuerst exportieren");
+    return;
+  }
   invalidateLoadIntents();
   resetNativeHistory();
   setWorkspaceActive(false);
@@ -2727,7 +2755,8 @@ function showStart() {
   elements.workspace.hidden = true;
   elements.startView.hidden = false;
   setError("");
-  setStatus(currentXml || currentRepresentation ? "Entwurf lokal gesichert" : "Bereit");
+  setStatus(draftSaved ? "Entwurf lokal gesichert"
+    : hasDocument ? "Ungesicherter Entwurf verlassen · vorheriger Speicherstand unverändert" : "Bereit");
   elements.sourceInput.focus({ preventScroll: true });
 }
 
@@ -3413,7 +3442,7 @@ function nativeCanvasDiffersFromRendered(canvas) {
   );
 }
 
-function serializeNativeFrameSvg({ stripInputDigest = false } = {}) {
+function serializeNativeFrameSvg({ stripInputDigest = false, preserveRelationView = false } = {}) {
   try {
     const svg = elements.frame.contentDocument?.querySelector("#nativeDiagram");
     if (
@@ -3428,6 +3457,19 @@ function serializeNativeFrameSvg({ stripInputDigest = false } = {}) {
     for (const overlay of clone.querySelectorAll?.(
       '[data-connection-handles], path.native-edge-hit'
     ) || []) overlay.remove();
+    // SVG and raster downloads cannot depend on the viewer's external CSS.
+    // Offline HTML intentionally keeps the complete graph for later interaction.
+    if (preserveRelationView) {
+      const strict = clone.classList?.contains("is-relevance-only");
+      const focused = clone.classList?.contains("is-relation-focused");
+      if (strict || focused) {
+        for (const muted of clone.querySelectorAll?.("[data-source-kind].is-muted") || []) {
+          if (strict) muted.remove();
+          else muted.setAttribute("opacity", "0.17");
+        }
+        stripInputDigest = true;
+      }
+    }
     clone.setAttribute("xmlns", "http://www.w3.org/2000/svg");
     if (stripInputDigest) clone.removeAttribute("data-input-digest");
     return '<?xml version="1.0" encoding="UTF-8"?>\n'
@@ -3563,7 +3605,8 @@ async function exportOfflineHtml() {
 
 async function exportNative(format) {
   const rasterExport = format === "pdf" || format === "png";
-  const requestedVersion = rasterExport ? exportRequestVersion : 0;
+  const requestedVersion = exportRequestVersion;
+  const requestedTitle = safeFilename(currentTitle);
   if (!editorReady || (!currentRepresentation && !currentNativeDocument && !currentNativeCanvas && !currentLegacyXml) || !currentNativeUrl) {
     setStatus("Schaubild ist noch nicht bereit");
     return;
@@ -3618,14 +3661,15 @@ async function exportNative(format) {
     stripInputDigest: currentNativeCanvas
       ? nativeCanvasDiffersFromRendered(currentNativeCanvas)
       : true,
+    preserveRelationView: true,
   });
   if (liveSvg !== null) {
     try {
       const svgBlob = new Blob([liveSvg], { type: "image/svg+xml;charset=utf-8" });
       const result = format === "pdf" ? await renderedImageToPdfBlob(svgBlob)
         : format === "png" ? await renderedImageToPngBlob(svgBlob) : svgBlob;
-      if (rasterExport && requestedVersion !== exportRequestVersion) return;
-      prepareDownload(result, safeFilename(currentTitle) + "." + format, format.toUpperCase());
+      if (requestedVersion !== exportRequestVersion) return;
+      prepareDownload(result, requestedTitle + "." + format, format.toUpperCase());
       setStatus(format === "pdf"
         ? "PDF aus aktueller nativer Darstellung bereit"
         : format === "png" ? "PNG aus aktueller nativer Darstellung bereit"
@@ -3633,8 +3677,8 @@ async function exportNative(format) {
           ? "SVG aus aktuellem Canvas-Dokument bereit"
           : "SVG aus aktueller nativer Darstellung bereit");
     } catch (_) {
-      if (!rasterExport || requestedVersion === exportRequestVersion) {
-        setStatus(format === "png" ? "PNG konnte nicht vorbereitet werden" : "PDF konnte nicht vorbereitet werden");
+      if (requestedVersion === exportRequestVersion) {
+        setStatus(format.toUpperCase() + " konnte nicht vorbereitet werden");
       }
     }
     return;
@@ -3651,11 +3695,11 @@ async function exportNative(format) {
     const svgBlob = new Blob([svg], { type: "image/svg+xml;charset=utf-8" });
     const result = format === "pdf" ? await renderedImageToPdfBlob(svgBlob)
       : format === "png" ? await renderedImageToPngBlob(svgBlob) : svgBlob;
-    if (rasterExport && requestedVersion !== exportRequestVersion) return;
-    prepareDownload(result, safeFilename(currentTitle) + "." + format, format.toUpperCase());
-    setStatus(format === "pdf" ? "PDF bereit" : format === "png" ? "PNG bereit" : "SVG bereit");
+    if (requestedVersion !== exportRequestVersion) return;
+    prepareDownload(result, requestedTitle + "." + format, format.toUpperCase());
+    setStatus(format.toUpperCase() + " aus vollständiger Serveransicht bereit");
   } catch (_) {
-    if (!rasterExport || requestedVersion === exportRequestVersion) {
+    if (requestedVersion === exportRequestVersion) {
       setStatus(format === "pdf" ? "PDF konnte nicht vorbereitet werden"
         : format === "png" ? "PNG konnte nicht vorbereitet werden" : "SVG konnte nicht vorbereitet werden");
     }
