@@ -2319,6 +2319,85 @@ def _process_svg_path_hits_box(
     return False
 
 
+def _process_dense_loop_stack(
+    source: tuple[int, int],
+    items: Sequence[tuple[str, tuple[float, float, float, float]]],
+    *,
+    canvas_width: int,
+    canvas_height: int,
+    card_boxes: Sequence[tuple[float, float, float, float]],
+    header_boxes: Sequence[tuple[float, float, float, float]],
+    peers: Sequence[tuple[str, tuple[float, float, float, float]]],
+) -> dict[str, tuple[str, float, float]] | None:
+    """Pack a dense stack together, instead of reserving its obsolete arcs.
+
+    Nested bottom rails have separate ports, outer legs and label-bearing
+    crossbars. The short flared stubs separate port width from label width;
+    a wide caption no longer consumes all the card's remaining ports.
+    """
+    x, y = source
+    count = len(items)
+    base = y + _NODE_HEIGHT
+    max_width = max(box[2] for _, box in items)
+    max_half = max_width / 2 + 12 + 6 * (count - 1)
+    centre = min(canvas_width - max_half - 8, max(max_half + 8, x + _NODE_WIDTH / 2))
+    if centre - max_half < 8 or centre + max_half > canvas_width - 8:
+        return None
+    stub = base + 12
+    rail = stub + 8
+    plans: dict[str, tuple[str, float, float]] = {}
+    occupied = list(peers)
+
+    def overlap(a: tuple[float, float, float, float],
+                b: tuple[float, float, float, float]) -> bool:
+        return (a[0] < b[0] + b[2] + 2 and b[0] < a[0] + a[2] + 2
+                and a[1] < b[1] + b[3] + 2 and b[1] < a[1] + a[3] + 2)
+
+    for i, (edge_id, old_box) in enumerate(items):
+        _, _, lw, lh = old_box
+        rail += lh / 2 + 6
+        if rail + lh / 2 > canvas_height - 8:
+            return None
+        span = max_width / 2 + 12 + i * 6
+        port_half = 12 + i * min(8, (_NODE_WIDTH / 2 - 20) / max(1, count - 1))
+        a = x + _NODE_WIDTH / 2 - port_half
+        b = x + _NODE_WIDTH / 2 + port_half
+        points = (
+            (a, base), (centre - span, stub), (centre - span, rail),
+            (centre + span, rail), (centre + span, stub), (b, base),
+        )
+        path = " ".join(
+            f"{'M' if j == 0 else 'L'} {px:.1f} {py:.1f}"
+            for j, (px, py) in enumerate(points)
+        )
+        box = (round(centre - lw / 2, 1), round(rail - lh / 2, 1), lw, lh)
+        if any(
+            overlap(box, other)
+            or (other[:2] != source and _process_svg_path_hits_box(path, other, padding=0))
+            for other in (*card_boxes, *header_boxes)
+        ):
+            return None
+        if any(
+            overlap(box, other) or _process_svg_path_hits_box(path, other)
+            or _process_svg_path_hits_box(peer, box)
+            or _process_paths_share_physical_stroke(path, peer)
+            for peer, other in occupied
+        ):
+            return None
+        if any(
+            (old_distance := _process_label_path_distance_sq(peer, other)) is not None
+            and old_distance <= 140**2
+            and (new_distance := _process_label_path_distance_sq(path, other)) is not None
+            and new_distance <= old_distance
+            for peer, other in occupied
+        ):
+            return None
+        plans[edge_id] = path, centre, rail
+        occupied.append((path, box))
+        rail += lh / 2 + 6
+    return plans
+
+
 def _process_local_self_loop_plan(
     source: tuple[int, int],
     own_box: tuple[float, float, float, float],
@@ -10806,8 +10885,52 @@ def render_native_diagram(
             *[edge for edge in loops if str(edge["id"]) not in detached
               and str(edge["from"]) in affected_sources],
         ]
+        # Dense stacks need simultaneous planning: the old arcs and remote
+        # labels are not obstacles that should survive their replacement.
+        dense_by_source: dict[str, list[Mapping[str, Any]]] = defaultdict(list)
+        for edge in loops:
+            dense_by_source[str(edge["from"])].append(edge)
+        dense_by_source = {
+            source_id: stack for source_id, stack in dense_by_source.items()
+            if len(stack) > 4
+        }
+        dense_planned: set[str] = set()
+        dense_unresolved = False
+        for source_id, stack in sorted(dense_by_source.items()):
+            ids = {str(edge["id"]) for edge in stack}
+            plans = _process_dense_loop_stack(
+                positions[source_id],
+                [(str(edge["id"]), loop_layout[str(edge["id"])][1]) for edge in stack],
+                canvas_width=width, canvas_height=height,
+                card_boxes=cards, header_boxes=headers,
+                peers=[pair for edge_id, pair in loop_layout.items() if edge_id not in ids],
+            )
+            if plans is None:
+                dense_unresolved = True
+                continue
+            for edge in stack:
+                edge_id = str(edge["id"])
+                path, cx, cy = plans[edge_id]
+                fragment = render_planned_edge(
+                    edge, local_self_loop_path=path, label_position_override=(cx, cy),
+                )
+                planned_edge_lines[edge_id] = fragment
+                loop_layout[edge_id] = loop_parts(fragment)
+                dense_planned.add(edge_id)
+        if dense_unresolved and not _process_loop_gap_extra:
+            reserve = max(
+                sum(loop_layout[str(edge["id"])][1][3] + 12 for edge in stack) + 36
+                for stack in dense_by_source.values()
+            )
+            return render_native_diagram(
+                value, _process_group_gap_extra=_process_group_gap_extra,
+                _process_loop_gap_extra=max(216, math.ceil(reserve)),
+            )
+
         unresolved_loop_ids = []
         for edge in ordered_loops:
+            if str(edge["id"]) in dense_planned:
+                continue
             edge_id = str(edge["id"])
             path, box = loop_layout[edge_id]
             if _process_label_near_own_path(path, box, max_distance=40.0):

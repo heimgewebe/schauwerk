@@ -1852,7 +1852,7 @@ function refreshProcessLocalSelfLoops() {
   const pathPoints = path => {
     if (!/^[ML0-9.,\s-]+$/.test(path)) return null;
     const parts = [...path.matchAll(/([ML])\s*([^ML]*)/g)];
-    if (parts.length !== 4 || parts[0][1] !== "M" ||
+    if (![4, 6].includes(parts.length) || parts[0][1] !== "M" ||
         parts.slice(1).some(part => part[1] !== "L")) return null;
     const points = parts.map(part => (part[2].match(/-?(?:\d+(?:\.\d*)?|\.\d+)/g) || []).map(Number));
     return points.every(p => p.length === 2 && p.every(Number.isFinite)) ? points : null;

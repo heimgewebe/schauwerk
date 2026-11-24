@@ -23,7 +23,7 @@ from schauwerk.visual.standalone_editor import (
 )
 
 
-@pytest.mark.parametrize("scenario", ["keyboard", "process-loop-drag"])
+@pytest.mark.parametrize("scenario", ["keyboard", "process-loop-drag", "process-dense-loop-drag"])
 def test_keyboard_connection_activation_and_focus_in_chrome(tmp_path: Path, scenario: str) -> None:
     if os.environ.get("CI") and sys.version_info[:2] != (3, 12):
         pytest.skip("keyboard interaction is covered on the Python 3.12 CI lane")
@@ -49,7 +49,8 @@ def test_keyboard_connection_activation_and_focus_in_chrome(tmp_path: Path, scen
         ],
         "schauwerk": {"edgeRouting": "smart"},
     }
-    if scenario == "process-loop-drag":
+    if scenario.startswith("process-"):
+        loop_count = 8 if scenario == "process-dense-loop-drag" else 2
         source = {
             "schema_version": "schauwerk-representation-input.v1",
             "id": "self_process_minimal2",
@@ -62,8 +63,10 @@ def test_keyboard_connection_activation_and_focus_in_chrome(tmp_path: Path, scen
             ],
             "edges": [
                 {"id": f"e{i}", "from": "a", "to": "a",
-                 "label": f"Selbstbezug {i}", "kind": "flow"}
-                for i in range(2)
+                 "label": f"Selbstbezug {i}" + (
+                     " mit längerem Text" if loop_count > 2 and i % 2 else ""
+                 ), "kind": "flow"}
+                for i in range(loop_count)
             ],
             "requirements": {}, "requested_formats": [],
         }
@@ -209,7 +212,7 @@ def test_keyboard_connection_activation_and_focus_in_chrome(tmp_path: Path, scen
             wait("document.readyState === 'complete' && !!document.querySelector('#sourceInput')", "editor")
             evaluate("document.querySelector('#sourceInput').value=" + json.dumps(json.dumps(source)))
             evaluate("document.querySelector('#openPasteButton').click()")
-            if scenario == "process-loop-drag":
+            if scenario.startswith("process-"):
                 wait(f"!!{doc}?.querySelector('#nativeDiagram') && !!{doc}?.querySelector('#nativeCanvas')?.style.transform",
                      "process viewer")
                 measure = """(()=>{
@@ -239,8 +242,8 @@ def test_keyboard_connection_activation_and_focus_in_chrome(tmp_path: Path, scen
                 })()"""
                 def check_geometry():
                     result = evaluate(measure)
-                    assert len(result) == 2, result
-                    assert len({e["path"] for e in result}) == 2, result
+                    assert len(result) == loop_count, result
+                    assert len({e["path"] for e in result}) == loop_count, result
                     assert all(e["own"] < 1 and e["other"] > e["own"]
                                and not e["overlap"] and not e["conflict"] for e in result), result
                     return result
@@ -261,10 +264,11 @@ def test_keyboard_connection_activation_and_focus_in_chrome(tmp_path: Path, scen
                     })
                 mouse("mouseMoved", x, y, 0)
                 mouse("mousePressed", x, y, 1)
+                dx, dy = (24, 0) if loop_count > 2 else (-24, 64)
                 for i in range(1, 9):
-                    mouse("mouseMoved", x - 3*i, y + 8*i, 1)
+                    mouse("mouseMoved", x + dx*i/8, y + dy*i/8, 1)
                     time.sleep(0.03)
-                mouse("mouseReleased", x - 24, y + 64, 0)
+                mouse("mouseReleased", x + dx, y + dy, 0)
                 wait(f"{transform} !== {json.dumps(previous_transform)}", "card drag")
                 after = check_geometry()
                 assert {e["path"] for e in after} != {e["path"] for e in before}

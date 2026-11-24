@@ -4819,6 +4819,44 @@ def test_process_loop_label_stays_with_its_own_path(node_count, source_index, la
     assert measure(raw) == forward
 
 
+@pytest.mark.parametrize("node_count,count", [(2, 8), (6, 12), (12, 16), (12, 32)])
+def test_dense_process_loop_stack_keeps_all_labels_on_distinct_paths(node_count, count) -> None:
+    raw = _minimal_process_model(node_count)
+    raw["edges"] = [
+        {"id": f"loop_{i:02d}", "from": "n0", "to": "n0",
+         "label": f"Selbstbezug {i:02d}" if i % 2 == 0
+                  else f"Selbstbezug {i:02d} mit längerem Text",
+         "kind": "flow"}
+        for i in range(count)
+    ]
+
+    def measure(model):
+        root = _parse(render_native_diagram(model))
+        boxes, paths, cards = _edge_label_boxes(root), _edge_paths(root), _node_boxes(root)
+        width, height = map(float, root.attrib["viewBox"].split()[2:])
+        assert len(set(paths.values())) == count
+        for edge_id, box in boxes.items():
+            x, y, lw, lh = box
+            distance = _process_label_path_distance_sq(paths[edge_id], box)
+            assert distance is not None and distance <= 1
+            assert 8 <= x and x + lw <= width - 8 and 104 <= y and y + lh <= height - 8
+            assert all(not _boxes_overlap(box, card) for card in cards.values())
+            for card_id, card in cards.items():
+                if card_id != "n0":
+                    assert not _process_svg_path_hits_box(paths[edge_id], card, padding=0)
+            for other_id, other_box in boxes.items():
+                if edge_id == other_id:
+                    continue
+                assert not _boxes_overlap(box, other_box)
+                assert not _process_svg_path_hits_box(paths[other_id], box)
+                assert _process_label_path_distance_sq(paths[other_id], box) > distance
+        return boxes, paths, root.attrib["viewBox"]
+
+    forward = measure(raw)
+    raw["edges"].reverse()
+    assert measure(raw) == forward
+
+
 @pytest.mark.parametrize("edge_id", ["loop_a", "loop_b"])
 def test_two_process_self_loop_singletons_keep_exact_preimage_geometry(edge_id: str) -> None:
     raw = _two_process_self_loops_model()
