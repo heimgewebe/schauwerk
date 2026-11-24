@@ -213,6 +213,38 @@ def test_self_loop_static_and_browser_routes_match(tmp_path: Path) -> None:
     assert edge_group(render(source)).get("data-routing-conflict") == "true"
 
 
+def test_fixed_opposite_self_loop_rails_match_browser_router(tmp_path: Path) -> None:
+    node_runtime = shutil.which("node")
+    if not node_runtime:
+        pytest.skip("Node.js unavailable for Python/JavaScript geometry parity")
+    a = {"id": "a", "type": "text", "x": 0, "y": 0,
+         "width": 200, "height": 100, "text": "Schleifen"}
+    module = tmp_path / "smart-router.mjs"
+    module.write_text(ASSETS["smart-router.js"], encoding="utf-8")
+    runner = tmp_path / "loops.mjs"
+    runner.write_text(
+        'import {smartEdgeGeometry} from "./smart-router.mjs";\n'
+        f"const a = {json.dumps(a)};\n"
+        'console.log(JSON.stringify(Array.from({length:9},(_,i)=>'
+        'smartEdgeGeometry(a,a,[a],{fromSide:"top",toSide:"bottom",'
+        'lane:i*18,maxLane:144}))));\n',
+        encoding="utf-8",
+    )
+    actual = json.loads(subprocess.run(
+        [node_runtime, str(runner)], capture_output=True, text=True,
+        timeout=10, check=True,
+    ).stdout)
+    expected = [
+        route_edge(a, a, [a], from_side="top", to_side="bottom",
+                   lane=slot * 18, max_lane=72)
+        for slot in range(9)
+    ]
+    assert all(expected)
+    assert all(route["collisionFree"] for route in actual)
+    assert [route["path"] for route in actual] == [route.path for route in expected]
+    assert len({route["path"] for route in actual}) == 9
+
+
 def test_reciprocal_smart_rails_match_browser_router(tmp_path: Path) -> None:
     """Both geometric kernels keep opposing edge strokes independently selectable."""
     node_runtime = shutil.which("node")

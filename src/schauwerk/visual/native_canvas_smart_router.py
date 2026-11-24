@@ -478,12 +478,18 @@ def route_edge(
 
     # Source and target rectangles prevent a computed detour from re-entering
     # either endpoint.  The first/last 22px stubs are handled independently.
-    source_box=_rect(source,clearance*0.6)
-    target_box=_rect(target,clearance*0.6)
+    # Separate the self-loop graph rails, not just the endpoint stubs.
+    # Fit all loop slots into the bounded rail budget without saturation.
+    loop_rail = (
+        abs(lane) * min(1.0, 96.0 / max(1.0, abs(lane), 2.0 * (max_lane or 0.0)))
+        if self_loop else 0.0
+    )
+    source_box=_rect(source,clearance*0.6+loop_rail)
+    target_box=_rect(target,clearance*0.6+loop_rail)
     all_boxes=tuple(blocking)+(source_box,target_box)
     source_sides=PORTS if from_side is None else (from_side,)
     target_sides=PORTS if to_side is None else (to_side,)
-    stub=max(22.0,clearance+10.0)+(min(96.0,abs(lane)) if self_loop else 0.0)
+    stub=max(22.0,clearance+10.0)+loop_rail
     candidates=[]
     for si,ss in enumerate(source_sides):
         start=(_self_loop_anchor(source,ss,0.35) if self_loop

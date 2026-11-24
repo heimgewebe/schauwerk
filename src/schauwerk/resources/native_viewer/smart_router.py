@@ -282,12 +282,16 @@ export function smartEdgeGeometry(source, target, nodes, options = {}) {
       ? smartEdgeGeometry(source, target, nodes,
           {...options, _useRailReservation: false})
       : null;
-  const sourceBox = rect(source, clearance * 0.6);
-  const targetBox = rect(target, clearance * 0.6);
+  // Match Python's bounded, distinct radial graph rails for self-loops.
+  const loopRail = selfLoop
+    ? Math.abs(lane) * Math.min(1, 96 / Math.max(1, Math.abs(lane), (maxLane ?? 0)))
+    : 0;
+  const sourceBox = rect(source, clearance * 0.6 + loopRail);
+  const targetBox = rect(target, clearance * 0.6 + loopRail);
   const allBoxes = [...blocking, sourceBox, targetBox];
   const sourceSides = fromSide === null ? PORTS : [fromSide];
   const targetSides = toSide === null ? PORTS : [toSide];
-  const stub = Math.max(22, clearance + 10) + (selfLoop ? Math.min(96,Math.abs(lane)) : 0);
+  const stub = Math.max(22, clearance + 10) + loopRail;
   const candidates = [];
   sourceSides.forEach((ss, si) => {
     const start = selfLoop ? selfLoopAnchor(source, ss, 0.35)
