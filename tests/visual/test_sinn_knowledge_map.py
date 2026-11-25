@@ -1167,6 +1167,30 @@ def test_reported_sinn_16_24_central_render_has_no_foreign_card_or_label_hits() 
     assert content == render_native_diagram(copy.deepcopy(source))
 
 
+def test_reported_sinn_16_24_clears_recoverable_ambiguous_labels() -> None:
+    """Label rescue must distinguish its own line from the nearby foreign stroke."""
+    from math import sqrt
+
+    from schauwerk.visual.native_diagram import (
+        _process_label_path_distance_sq,
+        _process_svg_path_hits_box,
+    )
+
+    root = ET.fromstring(render_native_diagram(_reported_sinn_16_24_model()))
+    edges = _edges(root)
+    paths = {key: value.find(SVG + "path").get("d", "") for key, value in edges.items()}
+    for edge_id in ("e06", "e10", "e15", "e21"):
+        rect = edges[edge_id].find(SVG + "rect")
+        assert rect is not None
+        box = tuple(float(rect.get(key, "0")) for key in ("x", "y", "width", "height"))
+        own = sqrt(_process_label_path_distance_sq(paths[edge_id], box))
+        assert own <= 100
+        for other_id, path in paths.items():
+            if other_id != edge_id:
+                assert not _process_svg_path_hits_box(path, box)
+                assert sqrt(_process_label_path_distance_sq(path, box)) > own + 8
+
+
 def test_reported_sinn_16_24_equal_degree_is_not_forced_into_the_center() -> None:
     """A tie is ambiguous and must not receive an invented central concept."""
     from schauwerk.visual.native_diagram import _knowledge_map_leading_node

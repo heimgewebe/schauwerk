@@ -16,6 +16,7 @@ from schauwerk.visual.native_diagram import (
     _estimated_wrap_width,
     _process_label_path_distance_sq,
     _process_svg_path_hits_box,
+    _process_svg_stroke_segments,
     _rebalance_single_word_lines,
     _split_token_to_width,
     _xml_escape,
@@ -4909,6 +4910,53 @@ def test_dense_mixed_process_routes_keep_labels_and_paths_unambiguous(grouped, s
     forward = measure(raw)
     raw["edges"].reverse()
     assert measure(raw) == forward
+
+
+@pytest.mark.parametrize("grouped", [False, True])
+def test_dense_process_frame_tracks_final_geometry_not_discarded_gutters(grouped) -> None:
+    raw = _minimal_process_model(8)
+    if grouped:
+        raw["groups"] = [{"id": "g0", "label": "Phase 1"}, {"id": "g1", "label": "Phase 2"}]
+        for i, node in enumerate(raw["nodes"]):
+            node["group"] = f"g{i//4}"
+    raw["edges"] = [
+        {"id": f"loop_{i:02d}", "from": "n0", "to": "n0",
+         "label": f"Selbstbezug {i:02d}" + (" mit längerem Text" if i % 2 else ""),
+         "kind": "flow"}
+        for i in range(8)
+    ]
+    raw["edges"].extend([
+        {"id": "peer_0", "from": "n0", "to": "n1", "label": "Prozessbeziehung 0", "kind": "flow"},
+        {"id": "peer_1", "from": "n1", "to": "n0",
+         "label": "Prozessbeziehung 1", "kind": "feedback"},
+    ])
+    root = _parse(render_native_diagram(raw))
+    _, _, width, height = map(float, root.attrib["viewBox"].split())
+    assert width < (1400 if grouped else 2600)
+    assert float(root.attrib["width"]) == width
+    assert float(root.attrib["height"]) == height
+    for x, y, w, h in [*_node_boxes(root).values(), *_edge_label_boxes(root).values()]:
+        assert 0 <= x <= x+w <= width-8
+        assert 0 <= y <= y+h <= height-8
+    for path in _edge_paths(root).values():
+        spans = _process_svg_stroke_segments(path)
+        assert spans
+        for segment in spans:
+            for x, y in segment:
+                assert 0 <= x <= width and 0 <= y <= height
+    for group in root.iter(f"{{{SVG_NAMESPACE}}}g"):
+        if group.get("data-source-kind") == "group":
+            box = group.find(f"{{{SVG_NAMESPACE}}}rect")
+            assert box is not None
+            x, y, w, h = _rect_box(box)
+            assert 0 <= x <= x+w <= width and 0 <= y <= y+h <= height
+    for clip in root.iter(f"{{{SVG_NAMESPACE}}}clipPath"):
+        if clip.get("id") in {"native-clip-title", "native-clip-purpose"}:
+            rect = clip.find(f"{{{SVG_NAMESPACE}}}rect")
+            assert rect is not None
+            x, _, w, _ = _rect_box(rect)
+            assert x+w <= width-8
+    assert root.find(f"{{{SVG_NAMESPACE}}}title").text == raw["title"]
 
 
 @pytest.mark.parametrize("edge_id", ["loop_a", "loop_b"])

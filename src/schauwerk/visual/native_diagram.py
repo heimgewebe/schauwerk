@@ -8111,63 +8111,70 @@ def render_native_diagram(
     )
     title_clip_id = "native-clip-title"
     purpose_clip_id = "native-clip-purpose"
-    lines = [
-        '<?xml version="1.0" encoding="UTF-8"?>',
-        f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {width} {height}" '
-        f'width="{width}" height="{height}" role="img" aria-labelledby="native-diagram-title" '
-        f'data-renderer="schauwerk-native-diagram-v1" '
-        f'data-visual-grammar="{_xml_escape(GRAMMAR_SCHEMA_VERSION)}" '
-        f'data-intent="{_xml_escape(str(model["intent"]))}" '
-        f'data-input-digest="{_xml_escape(str(model["input_digest"]))}">',
-        f'<title id="native-diagram-title">{_xml_escape(str(model["title"]))}</title>',
-        f'<desc>{_xml_escape(str(model["purpose"]))}</desc>',
-        f'<rect width="{width}" height="{height}" fill="#f8fafc"/>',
-    ]
-    lines.extend(_marker_definitions())
-    lines.append(
-        _clip_definition(
-            title_clip_id,
-            x=_PAGE_MARGIN,
-            y=20,
-            width=purpose_max_width,
-            height=40,
+    def render_header(width: int, height: int) -> list[str]:
+        header_width = width - 2 * _PAGE_MARGIN
+        lines = [
+            '<?xml version="1.0" encoding="UTF-8"?>',
+            f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {width} {height}" '
+            f'width="{width}" height="{height}" role="img" aria-labelledby="native-diagram-title" '
+            f'data-renderer="schauwerk-native-diagram-v1" '
+            f'data-visual-grammar="{_xml_escape(GRAMMAR_SCHEMA_VERSION)}" '
+            f'data-intent="{_xml_escape(str(model["intent"]))}" '
+            f'data-input-digest="{_xml_escape(str(model["input_digest"]))}">',
+            f'<title id="native-diagram-title">{_xml_escape(str(model["title"]))}</title>',
+            f'<desc>{_xml_escape(str(model["purpose"]))}</desc>',
+            f'<rect width="{width}" height="{height}" fill="#f8fafc"/>',
+        ]
+        lines.extend(_marker_definitions())
+        lines.append(
+            _clip_definition(
+                title_clip_id,
+                x=_PAGE_MARGIN,
+                y=20,
+                width=header_width,
+                height=40,
+            )
         )
-    )
-    lines.append(
-        _clip_definition(
-            purpose_clip_id,
-            x=_PAGE_MARGIN,
-            y=64,
-            width=purpose_max_width,
-            height=40,
+        lines.append(
+            _clip_definition(
+                purpose_clip_id,
+                x=_PAGE_MARGIN,
+                y=64,
+                width=header_width,
+                height=40,
+            )
         )
-    )
-    lines.extend(
-        _svg_text_lines(
-            title_lines,
-            x=_PAGE_MARGIN,
-            y=52,
-            line_height=32,
-            size=28,
-            weight=750,
-            color="#172033",
-            max_width=purpose_max_width,
-            clip_id=title_clip_id,
+        lines.extend(
+            _svg_text_lines(
+                title_lines,
+                x=_PAGE_MARGIN,
+                y=52,
+                line_height=32,
+                size=28,
+                weight=750,
+                color="#172033",
+                max_width=header_width,
+                clip_id=title_clip_id,
+            )
         )
-    )
-    lines.extend(
-        _svg_text_lines(
-            purpose_lines,
-            x=_PAGE_MARGIN,
-            y=82,
-            line_height=19,
-            size=15,
-            weight=400,
-            color="#52606d",
-            max_width=purpose_max_width,
-            clip_id=purpose_clip_id,
+        lines.extend(
+            _svg_text_lines(
+                purpose_lines,
+                x=_PAGE_MARGIN,
+                y=82,
+                line_height=19,
+                size=15,
+                weight=400,
+                color="#52606d",
+                max_width=header_width,
+                clip_id=purpose_clip_id,
+            )
         )
-    )
+
+        return lines
+
+    lines = render_header(width, height)
+    header_length = len(lines)
 
     group_separator_y = 50 if intent == "knowledge_map" else 44
     for region_index, (group_id, label, x, y, region_width, region_height) in enumerate(regions):
@@ -10896,7 +10903,20 @@ def render_native_diagram(
                 20 <= len(paint_edges) <= 40
                 and any(boxes_overlap(old_box, box) for box in node_boxes)
             )
-            if not blocked_by_peer_label and not blocked_by_card:
+            # Reserve the extra distance checks for small and medium maps.
+            peers = [
+                path for other_id, (path, _) in label_layout.items()
+                if other_id != edge_id
+            ]
+            ambiguous = False
+            if len(paint_edges) <= 40:
+                own_distance = _process_label_path_distance_sq(own_path, old_box)
+                ambiguous = own_distance is not None and any(
+                    (distance := _process_label_path_distance_sq(path, old_box)) is not None
+                    and distance <= own_distance + 1
+                    for path in peers
+                )
+            if not blocked_by_peer_label and not blocked_by_card and not ambiguous:
                 continue
             for trial in _process_near_path_label_boxes(
                 # Small and medium maps can afford a few more candidates
@@ -10921,6 +10941,14 @@ def render_native_diagram(
                     )
                 ):
                     continue
+                if ambiguous:
+                    distance = _process_label_path_distance_sq(own_path, trial)
+                    if distance is None or distance > 100**2 or any(
+                        (d := _process_label_path_distance_sq(path, trial)) is None
+                        or math.sqrt(d) <= math.sqrt(distance) + 8
+                        for path in peers
+                    ):
+                        continue
                 fragment = render_planned_edge(
                     movable[edge_id],
                     label_position_override=(
@@ -10930,14 +10958,28 @@ def render_native_diagram(
                 )
                 candidate_path = edge_path(fragment)
                 candidate_box = label_box(fragment)
-                if (
-                    candidate_path != own_path
-                    or any(
-                        abs(actual - proposed) > 0.1
-                        for actual, proposed in zip(candidate_box, trial)
-                    )
+                if any(
+                    abs(actual - proposed) > .1
+                    for actual, proposed in zip(candidate_box, trial)
                 ):
                     continue
+                if candidate_path != own_path:
+                    if not ambiguous:
+                        continue
+                    # A readability pass may have replaced the physical path.
+                    # Relocate its label, retaining the certified route bytes.
+                    old_fragment = planned_edge_lines[edge_id]
+                    previous = next(
+                        line for line in old_fragment
+                        if line.startswith('<path d="') and 'fill="none"' in line
+                    )
+                    index = next(
+                        i for i, line in enumerate(fragment)
+                        if line.startswith('<path d="') and 'fill="none"' in line
+                    )
+                    fragment[index] = previous
+                    fragment[0] = old_fragment[0]
+                    candidate_path = own_path
                 planned_edge_lines[edge_id] = fragment
                 label_layout[edge_id] = candidate_path, candidate_box
                 adjusted += 1
@@ -11000,6 +11042,7 @@ def render_native_diagram(
                     )
                     break
 
+    compact_process_frame = False
     # Process overflow previously moved only the text box, leaving its
     # self-loop on a distant card. Replan the pair in the existing free space.
     if intent == "process" and any(edge["from"] == edge["to"] for edge in paint_edges):
@@ -11073,6 +11116,7 @@ def render_native_diagram(
                 planned_edge_lines[edge_id] = fragment
                 loop_layout[edge_id] = loop_parts(fragment)
                 dense_planned.add(edge_id)
+        compact_process_frame = bool(dense_by_source) and not dense_unresolved
         if dense_unresolved and not _process_loop_gap_extra:
             reserve = max(
                 sum(loop_layout[str(edge["id"])][1][3] + 12 for edge in stack) + 36
@@ -11116,6 +11160,7 @@ def render_native_diagram(
                     fragments[edge_id] = fragment
                 else:
                     planned_edge_lines.update(fragments)
+                    compact_process_frame = True
                     ordered_loops = []
 
         unresolved_loop_ids = []
@@ -11147,6 +11192,44 @@ def render_native_diagram(
                 value, _process_group_gap_extra=_process_group_gap_extra,
                 _process_loop_gap_extra=min(216, 64 + 48 * len(unresolved_loop_ids)),
             )
+
+    if compact_process_frame:
+        # The final dense plan replaces obsolete outer gutters. Shrink only
+        # the frame, never the accepted positions or paths. Cubic control
+        # points conservatively bound the entire rendered curve.
+        extent = [
+            (float(x + _NODE_WIDTH), float(y + _NODE_HEIGHT))
+            for x, y in positions.values()
+        ]
+        extent.extend(
+            (float(x + rw), float(y + rh)) for _, _, x, y, rw, rh in regions
+        )
+        for fragment in planned_edge_lines.values():
+            path, box = loop_parts(fragment)
+            parsed = _process_svg_stroke_segments(path)
+            if not parsed:
+                break
+            extent.extend(point for segment in parsed for point in segment)
+            extent.append((box[0] + box[2], box[1] + box[3]))
+        else:
+            # Retain the original wrapping and leave extra glyph clearance.
+            text_width = max(
+                [
+                    max(_estimated_wrap_width(line, size=size),
+                        _estimated_text_width(line, size=size))
+                    for text_lines, size in ((title_lines, 28), (purpose_lines, 15))
+                    for line in text_lines
+                ] + [0]
+            )
+            compact_width = min(width, math.ceil(max(
+                max(x for x, _ in extent) + _PAGE_MARGIN,
+                text_width + 2 * _PAGE_MARGIN + 16, 600,
+            )))
+            compact_height = min(
+                height, math.ceil(max(y for _, y in extent) + _PAGE_MARGIN)
+            )
+            if compact_width < width or compact_height < height:
+                lines[:header_length] = render_header(compact_width, compact_height)
 
     for edge in paint_edges:
         lines.extend(planned_edge_lines[str(edge["id"])])
