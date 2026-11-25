@@ -11055,6 +11055,116 @@ def render_native_diagram(
                 label_layout[edge_id] = path, actual
                 break
 
+        # Distinguish coincident destination ports without moving the cards
+        # or packed captions. Limit the local pass to ordinary knowledge maps.
+        if len(paint_edges) <= 40:
+            edge_by_id = {str(edge["id"]): edge for edge in paint_edges}
+
+            def endpoint(path):
+                segments = _process_svg_stroke_segments(path)
+                return segments[-1][-1] if segments else None
+
+            for edge_id, edge in sorted(edge_by_id.items()):
+                if edge["from"] == edge["to"]:
+                    continue
+                path, own_box = label_layout[edge_id]
+                end = endpoint(path)
+                if end is None:
+                    continue
+                target = str(edge["to"])
+                peers = [
+                    (other_id, other_path, other_box)
+                    for other_id, (other_path, other_box) in label_layout.items()
+                    if other_id != edge_id
+                ]
+                target_ports = [
+                    point for other_id, other_path, _ in peers
+                    if str(edge_by_id[other_id]["to"]) == target
+                    and (point := endpoint(other_path)) is not None
+                ]
+                if not any(math.dist(end, point) < 2 for point in target_ports):
+                    continue
+                x, y = positions[target]
+                if abs(end[0] - x) < .1 or abs(end[0] - x - _NODE_WIDTH) < .1:
+                    tangent = 1
+                    low, high = y + 20, y + _NODE_HEIGHT - 20
+                elif abs(end[1] - y) < .1 or abs(end[1] - y - _NODE_HEIGHT) < .1:
+                    tangent = 0
+                    low, high = x + 20, x + _NODE_WIDTH - 20
+                else:
+                    continue
+                tokens = path.replace(",", " ").split()
+                segments = _process_svg_stroke_segments(path)
+                if not segments or math.dist(segments[-1][0], end) < 24:
+                    continue
+                cubic = len(segments[-1]) == 4
+                # Preserve the normal component of the terminal tangent.
+                # Only move a straight terminal elbow when its predecessor
+                # is also an orthogonal line, otherwise leave it unchanged.
+                if not cubic and (len(segments) < 2 or len(segments[-2]) != 2):
+                    continue
+                old_distance = _process_label_path_distance_sq(path, own_box)
+                for delta in (-16, 16, -24, 24, -36, 36, -48, 48):
+                    port = list(end)
+                    port[tangent] += delta
+                    if not low <= port[tangent] <= high:
+                        continue
+                    if any(math.dist(port, q) < 12 for q in target_ports):
+                        continue
+                    changed = tokens.copy()
+                    changed[-2+tangent] = f"{port[tangent]:.1f}"
+                    if cubic:
+                        changed[-4+tangent] = f"{float(tokens[-4+tangent])+delta:.1f}"
+                    else:
+                        prior = segments[-2]
+                        normal = 1-tangent
+                        if (abs(prior[0][normal]-prior[1][normal]) > .1
+                            or abs(segments[-1][0][tangent]-end[tangent]) > .1):
+                            continue
+                        changed[-5+tangent] = f"{float(tokens[-5+tangent])+delta:.1f}"
+                    proposal = " ".join(changed)
+                    if any(
+                        _process_svg_path_hits_box(
+                            proposal,
+                            (nx+2, ny+2, _NODE_WIDTH-4, _NODE_HEIGHT-4)
+                            if nid in {str(edge["from"]), target}
+                            else (nx, ny, _NODE_WIDTH, _NODE_HEIGHT),
+                            padding=0,
+                        )
+                        for nid, (nx, ny) in positions.items()
+                    ):
+                        continue
+                    new_distance = _process_label_path_distance_sq(proposal, own_box)
+                    if old_distance is None or new_distance is None or (
+                        math.sqrt(new_distance) > math.sqrt(old_distance)+8
+                    ):
+                        continue
+                    if any(
+                        (_process_svg_path_hits_box(proposal, box)
+                         and not _process_svg_path_hits_box(path, box))
+                        or (_process_paths_share_physical_stroke(proposal, other_path)
+                            and not _process_paths_share_physical_stroke(path, other_path))
+                        or (
+                            (other_distance := _process_label_path_distance_sq(other_path, box))
+                            is not None
+                            and (before := _process_label_path_distance_sq(path, box)) is not None
+                            and (after := _process_label_path_distance_sq(proposal, box))
+                            is not None
+                            and math.sqrt(before) > math.sqrt(other_distance)+8
+                            and math.sqrt(after) <= math.sqrt(other_distance)+8
+                        )
+                        for _, other_path, box in peers
+                    ):
+                        continue
+                    fragment = planned_edge_lines[edge_id]
+                    index = next(i for i, line in enumerate(fragment)
+                                 if line.startswith('<path d="') and 'fill="none"' in line)
+                    fragment[index] = re.sub(
+                        r'd="[^"]+"', f'd="{proposal}"', fragment[index], count=1
+                    )
+                    label_layout[edge_id] = proposal, own_box
+                    break
+
         label_clearances: list[tuple[float, float, float, float]] = []
         for fragment in planned_edge_lines.values():
             group = ET.fromstring("\n".join(fragment))

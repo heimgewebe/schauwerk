@@ -1368,3 +1368,25 @@ def test_reported_sinn_long_forward_feedback_uses_clear_local_corridor() -> None
         assert rect is not None
         box = tuple(float(rect.get(key, "0")) for key in ("x", "y", "width", "height"))
         assert not _process_svg_path_hits_box(d, box)
+
+def test_reported_sinn_16_24_separates_coincident_destination_ports() -> None:
+    """Distinct incoming relationships must remain individually traceable."""
+    from math import dist
+
+    from schauwerk.visual.native_diagram import _process_svg_stroke_segments
+
+    source = _reported_sinn_16_24_model()
+    edges = _edges(ET.fromstring(render_native_diagram(source)))
+    ports = {}
+    for relation in source["edges"]:
+        path = edges[relation["id"]].find(SVG + "path")
+        assert path is not None
+        segments = _process_svg_stroke_segments(path.get("d", ""))
+        assert segments
+        ports.setdefault(relation["to"], []).append(
+            (relation["id"], segments[-1][-1])
+        )
+    for incoming in ports.values():
+        for index, (edge_id, port) in enumerate(incoming):
+            for other_id, other_port in incoming[index + 1:]:
+                assert dist(port, other_port) >= 2, (edge_id, other_id, port)
