@@ -10985,6 +10985,76 @@ def render_native_diagram(
                 adjusted += 1
                 break
 
+        # Shorten genuinely long same-row forward feedback only after
+        # the existing layout and label packing have settled. Keep the
+        # original footer intact whenever no safe local route exists.
+        for edge in feedback_edges:
+            edge_id = str(edge["id"])
+            source_id, target_id = str(edge["from"]), str(edge["to"])
+            sx, sy = positions[source_id]
+            tx, ty = positions[target_id]
+            if sy != ty or tx - sx <= _GROUP_WIDTH + _KNOWLEDGE_MAP_GROUP_GAP + 16:
+                continue
+            old_path, old_box = label_layout[edge_id]
+            old_segments = _process_svg_stroke_segments(old_path)
+            old_length = sum(
+                math.dist(a, b) for seg in old_segments for a, b in zip(seg, seg[1:])
+            )
+            if old_length <= 1.8 * (tx - sx):
+                continue
+            peers = [pair for eid, pair in label_layout.items() if eid != edge_id]
+            obstacles = [
+                (float(x), float(y), float(_NODE_WIDTH), float(_NODE_HEIGHT))
+                for nid, (x, y) in positions.items()
+                if nid not in (source_id, target_id)
+            ]
+            obstacles.extend(box for _, box in peers)
+            obstacles.extend((float(x), float(y), float(w), 44.0)
+                             for _, _, x, y, w, _ in regions)
+            bw, bh = old_box[2:]
+            candidates = []
+            for side in (1, -1):
+                py = sy + (_NODE_HEIGHT if side == 1 else 0)
+                for offset in range(math.ceil(bh / 2 + 8),
+                                    math.floor(non_process_row_gap - bh / 2 - 4) + 1, 8):
+                    ry = py + side * offset
+                    if ry < 104 or ry > height - 8:
+                        continue
+                    for port_offset in (0, -32, 32, -64, 64):
+                        ax = sx + _NODE_WIDTH / 2 + port_offset
+                        bx = tx + _NODE_WIDTH / 2 + port_offset
+                        path = (f"M {ax:.1f} {py:.1f} L {ax:.1f} {ry:.1f} "
+                                f"L {bx:.1f} {ry:.1f} L {bx:.1f} {py:.1f}")
+                        if any(_process_svg_path_hits_box(path, box, padding=4)
+                               for box in obstacles):
+                            continue
+                        for fraction in (.25, .5, .75, .15, .85):
+                            cx = ax + (bx - ax) * fraction
+                            for label_y in (ry, ry - side * (bh / 2 + 6),
+                                            ry + side * (bh / 2 + 6)):
+                                box = (cx - bw / 2, label_y - bh / 2, bw, bh)
+                                if (box[0] < 8 or box[0] + bw > width - 8
+                                    or box[1] < 104 or box[1] + bh > height - 8
+                                    or any(boxes_overlap(box, b) for b in node_boxes)
+                                    or any(boxes_overlap(box, b) for _, b in peers)
+                                    or any(_process_svg_path_hits_box(p, box)
+                                           for p, _ in peers)):
+                                    continue
+                                candidates.append((2 * offset + abs(bx - ax),
+                                                   abs(label_y - ry),
+                                                   abs(port_offset), path, cx, label_y))
+            for _, _, _, path, cx, cy in sorted(candidates):
+                fragment = render_planned_edge(edge, label_position_override=(cx, cy))
+                actual = label_box(fragment)
+                if abs(actual[0]+actual[2]/2-cx) > .1 or abs(actual[1]+actual[3]/2-cy) > .1:
+                    continue
+                index = next(i for i, line in enumerate(fragment)
+                             if line.startswith('<path d="') and 'fill="none"' in line)
+                fragment[index] = re.sub(r'd="[^"]+"', f'd="{path}"', fragment[index], count=1)
+                planned_edge_lines[edge_id] = fragment
+                label_layout[edge_id] = path, actual
+                break
+
         label_clearances: list[tuple[float, float, float, float]] = []
         for fragment in planned_edge_lines.values():
             group = ET.fromstring("\n".join(fragment))

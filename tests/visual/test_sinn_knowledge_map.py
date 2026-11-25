@@ -1342,3 +1342,29 @@ def test_reported_sinn_16_24_layout_reduces_crossings_without_inventing_group() 
         if len({first["from"], first["to"], second["from"], second["to"]}) == 4
     )
     assert routed_crossings <= 25, routed_crossings
+
+
+def test_reported_sinn_long_forward_feedback_uses_clear_local_corridor() -> None:
+    """A long same-row return should not traverse the entire card field."""
+    from math import dist
+
+    from schauwerk.visual.native_diagram import (
+        _process_svg_path_hits_box,
+        _process_svg_stroke_segments,
+    )
+
+    root = ET.fromstring(render_native_diagram(_reported_sinn_16_24_model()))
+    edges = _edges(root)
+    path = edges["e11"].find(SVG + "path")
+    assert path is not None
+    d = path.get("d", "")
+    segments = _process_svg_stroke_segments(d)
+    length = sum(dist(a, b) for seg in segments for a, b in zip(seg, seg[1:]))
+    assert length < 1000
+    for edge_id, edge in edges.items():
+        if edge_id == "e11":
+            continue
+        rect = edge.find(SVG + "rect")
+        assert rect is not None
+        box = tuple(float(rect.get(key, "0")) for key in ("x", "y", "width", "height"))
+        assert not _process_svg_path_hits_box(d, box)
