@@ -23,7 +23,7 @@ from schauwerk.visual.standalone_editor import (
 )
 
 
-@pytest.mark.parametrize("scenario", ["keyboard", "process-loop-drag", "process-dense-loop-drag"])
+@pytest.mark.parametrize("scenario", ["keyboard", "process-loop-drag", "process-dense-loop-drag", "process-mixed-loop-drag"])
 def test_keyboard_connection_activation_and_focus_in_chrome(tmp_path: Path, scenario: str) -> None:
     if os.environ.get("CI") and sys.version_info[:2] != (3, 12):
         pytest.skip("keyboard interaction is covered on the Python 3.12 CI lane")
@@ -50,7 +50,7 @@ def test_keyboard_connection_activation_and_focus_in_chrome(tmp_path: Path, scen
         "schauwerk": {"edgeRouting": "smart"},
     }
     if scenario.startswith("process-"):
-        loop_count = 8 if scenario == "process-dense-loop-drag" else 2
+        loop_count = 8 if scenario != "process-loop-drag" else 2
         source = {
             "schema_version": "schauwerk-representation-input.v1",
             "id": "self_process_minimal2",
@@ -70,6 +70,15 @@ def test_keyboard_connection_activation_and_focus_in_chrome(tmp_path: Path, scen
             ],
             "requirements": {}, "requested_formats": [],
         }
+    if scenario == "process-mixed-loop-drag":
+        source["nodes"].extend(
+            {"id": f"n{i}", "label": f"Karte {i}", "kind": "concept"}
+            for i in range(2, 8)
+        )
+        source["edges"].extend([
+            {"id": "peer_0", "from": "a", "to": "b", "label": "Prozessbeziehung 0", "kind": "flow"},
+            {"id": "peer_1", "from": "b", "to": "a", "label": "Prozessbeziehung 1", "kind": "feedback"},
+        ])
     output = tmp_path / "editor"
     build_standalone_editor(output)
     server = ThreadingHTTPServer(
@@ -221,6 +230,11 @@ def test_keyboard_connection_activation_and_focus_in_chrome(tmp_path: Path, scen
                     const paths=groups.map(e=>e.querySelector('path[fill=none]'));
                     const labels=groups.map(e=>[...e.children].find(c=>c.tagName==='rect'&&c.getAttribute('rx')==='9').getBoundingClientRect());
                     const nodes=[...d.querySelectorAll('[data-source-kind=node] > rect')].map(n=>n.getBoundingClientRect());
+                    const svg=d.querySelector('#nativeDiagram'),view=svg.viewBox.baseVal;
+                    const frame=svg.getScreenCTM(),inverse=frame.inverse();
+                    const cardIds=[...d.querySelectorAll('[data-source-kind=node] > rect')].map(n=>n.parentElement.dataset.sourceId);
+                    const relations=__SOURCE_RELATIONS__;
+                    
                     const overlap=(a,b)=>a.left<b.right&&b.left<a.right&&a.top<b.bottom&&b.top<a.bottom;
                     const dist=(p,x,y)=>{
                         const m=p.getScreenCTM(),len=p.getTotalLength();
@@ -234,17 +248,32 @@ def test_keyboard_connection_activation_and_focus_in_chrome(tmp_path: Path, scen
                     return groups.map((e,i)=>{
                         const b=labels[i],x=b.x+b.width/2,y=b.y+b.height/2;
                         const distances=paths.map(p=>dist(p,x,y));
-                        return {id:e.dataset.sourceId,path:paths[i].getAttribute('d'),
-                            own:distances[i],other:Math.min(...distances.filter((_,j)=>j!==i)),
+                        const relation=relations.find(r=>r.id===e.dataset.sourceId);
+                        const p=paths[i],m=p.getScreenCTM(),len=p.getTotalLength();
+                        const count=Math.max(500,Math.ceil(len/2));
+                        let cardHit=false,outside=false;
+                        for(let k=0;k<=count;k++){
+                            const q=p.getPointAtLength(len*k/count).matrixTransform(m);
+                            const v=q.matrixTransform(inverse);
+                            if(v.x<view.x-.2||v.y<view.y-.2||v.x>view.x+view.width+.2||v.y>view.y+view.height+.2) outside=true;
+                            if(nodes.some((r,j)=>cardIds[j]!==relation.from&&cardIds[j]!==relation.to&&q.x>r.left+.2&&q.x<r.right-.2&&q.y>r.top+.2&&q.y<r.bottom-.2)) cardHit=true;
+                        }
+                        return {id:e.dataset.sourceId,path:p.getAttribute('d'),
+                            own:distances[i],worldOwn:distances[i]/Math.hypot(m.a,m.b),
+                            other:Math.min(...distances.filter((_,j)=>j!==i)),
+                            loop:relation.from===relation.to,cardHit,outside,
                             overlap:[...nodes,...labels.filter((_,j)=>j!==i)].some(r=>overlap(b,r)),
                             conflict:e.hasAttribute('data-routing-conflict')};
                     });
-                })()"""
+                })()""".replace("__SOURCE_RELATIONS__", json.dumps(source["edges"]))
                 def check_geometry():
                     result = evaluate(measure)
-                    assert len(result) == loop_count, result
-                    assert len({e["path"] for e in result}) == loop_count, result
-                    assert all(e["own"] < 1 and e["other"] > e["own"]
+                    if scenario == "process-mixed-loop-drag":
+                        print("MIXED_BROWSER_GEOMETRY", json.dumps(result), flush=True)
+                    assert len(result) == len(source["edges"]), result
+                    assert len({e["path"] for e in result}) == len(source["edges"]), result
+                    assert all((e["worldOwn"] <= 1 if e["loop"] else e["worldOwn"] <= 40)
+                               and e["other"] > e["own"] and not e["cardHit"] and not e["outside"]
                                and not e["overlap"] and not e["conflict"] for e in result), result
                     return result
 
@@ -264,7 +293,9 @@ def test_keyboard_connection_activation_and_focus_in_chrome(tmp_path: Path, scen
                     })
                 mouse("mouseMoved", x, y, 0)
                 mouse("mousePressed", x, y, 1)
-                dx, dy = (24, 0) if loop_count > 2 else (-24, 64)
+                dx, dy = (12, 0) if scenario == "process-mixed-loop-drag" else (
+                    (24, 0) if loop_count > 2 else (-24, 64)
+                )
                 for i in range(1, 9):
                     mouse("mouseMoved", x + dx*i/8, y + dy*i/8, 1)
                     time.sleep(0.03)

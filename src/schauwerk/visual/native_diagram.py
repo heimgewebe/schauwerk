@@ -2398,6 +2398,154 @@ def _process_dense_loop_stack(
     return plans
 
 
+def _process_mixed_dense_plan(
+    positions: Mapping[str, tuple[int, int]],
+    edges: Sequence[Mapping[str, Any]],
+    layout: Mapping[str, tuple[str, tuple[float, float, float, float]]],
+    stacks: Mapping[str, Sequence[Mapping[str, Any]]],
+    *,
+    canvas_width: int,
+    canvas_height: int,
+    card_boxes: Sequence[tuple[float, float, float, float]],
+    header_boxes: Sequence[tuple[float, float, float, float]],
+) -> dict[str, tuple[str, float, float]] | None:
+    """Reserve dense loop envelopes, then route other relations around them.
+
+    This is a bounded fallback for an actual dense mixed process layout
+    which already needed extra row space. Reuse the canvas obstacle router;
+    publish only an entire collision-checked plan, never partially adopt it.
+    """
+    if len(positions) > 32 or len(edges) > 40:
+        return None
+    dense_ids = {str(edge["id"]) for stack in stacks.values() for edge in stack}
+    result: dict[str, tuple[str, float, float]] = {}
+    occupied: dict[str, tuple[str, tuple[float, float, float, float]]] = {}
+    nodes = [
+        dict(id=node_id, type="node", x=x, y=y, width=_NODE_WIDTH, height=_NODE_HEIGHT)
+        for node_id, (x, y) in positions.items()
+    ]
+    node_by_id = {node["id"]: node for node in nodes}
+
+    def overlaps(a: tuple[float, float, float, float],
+                 b: tuple[float, float, float, float]) -> bool:
+        return (a[0] < b[0] + b[2] + 2 and b[0] < a[0] + a[2] + 2
+                and a[1] < b[1] + b[3] + 2 and b[1] < a[1] + a[3] + 2)
+
+    for source_id, stack in sorted(stacks.items()):
+        plan = _process_dense_loop_stack(
+            positions[source_id],
+            [(str(edge["id"]), layout[str(edge["id"])][1]) for edge in stack],
+            canvas_width=canvas_width, canvas_height=canvas_height,
+            card_boxes=card_boxes, header_boxes=header_boxes,
+            peers=list(occupied.values()),
+        )
+        if plan is None:
+            return None
+        extent: list[tuple[float, float]] = []
+        for edge_id, (path, cx, cy) in plan.items():
+            lw, lh = layout[edge_id][1][2:]
+            box = (round(cx-lw/2, 1), round(cy-lh/2, 1), lw, lh)
+            occupied[edge_id] = path, box
+            result[edge_id] = path, cx, cy
+            segments = _process_svg_stroke_segments(path)
+            if not segments:
+                return None
+            extent.extend(point for segment in segments for point in segment)
+            extent.extend(((box[0], box[1]), (box[0]+lw, box[1]+lh)))
+        xs, ys = zip(*extent)
+        # The stack starts at the source's lower boundary. Treat the whole
+        # envelope as an obstacle, including its outermost label.
+        nodes.append(dict(
+            id="__stack_" + source_id, type="node", x=min(xs), y=min(ys)+.1,
+            width=max(xs)-min(xs), height=max(ys)-min(ys)-.1,
+        ))
+
+    nodes.extend(
+        dict(id=f"__header_{i}", type="node", x=x, y=y, width=w, height=h)
+        for i, (x, y, w, h) in enumerate(header_boxes)
+    )
+    prior: list[dict[str, Any]] = []
+    sides = ("left", "right", "top", "bottom")
+    ports = [(None, None), *((a, b) for a in sides for b in sides)]
+    for edge in sorted(
+        (edge for edge in edges if str(edge["id"]) not in dense_ids),
+        key=_process_anchor_order_key,
+    ):
+        edge_id = str(edge["id"])
+        source_id, target_id = str(edge["from"]), str(edge["to"])
+        lw, lh = layout[edge_id][1][2:]
+        chosen = None
+        for from_side, to_side in ports:
+            candidate = _canvas_smart_route_edge(
+                node_by_id[source_id], node_by_id[target_id], nodes,
+                from_side=from_side, to_side=to_side, clearance=8,
+                prior_routes=prior[-12:],
+            )
+            if candidate is None:
+                continue
+            path = candidate.path
+            xmin, ymin, xmax, ymax = candidate.bounds
+            if xmin < 8 or ymin < 104 or xmax > canvas_width-8 or ymax > canvas_height-8:
+                continue
+            if any(
+                _process_svg_path_hits_box(path, box)
+                or _process_paths_share_physical_stroke(path, peer)
+                or (
+                    (own := _process_label_path_distance_sq(peer, box)) is not None
+                    and (new := _process_label_path_distance_sq(path, box)) is not None
+                    and new <= own
+                )
+                for peer, box in occupied.values()
+            ):
+                continue
+            preferred = (candidate.label_x-lw/2, candidate.label_y-lh/2, lw, lh)
+            centres = [preferred]
+            for a, b in _process_sampled_svg_lines(path) or ():
+                for fraction in (.25, .5, .75):
+                    centres.append((
+                        a[0]+fraction*(b[0]-a[0])-lw/2,
+                        a[1]+fraction*(b[1]-a[1])-lh/2, lw, lh,
+                    ))
+            centres.sort(key=lambda box: (
+                abs(box[0]-preferred[0])+abs(box[1]-preferred[1]), box[0], box[1],
+            ))
+            for trial in (*centres, *_process_near_path_label_boxes(path, preferred, limit=512)):
+                x, y, w, h = trial
+                box = (round(x, 1), round(y, 1), w, h)
+                if x < 8 or y < 104 or x+w > canvas_width-8 or y+h > canvas_height-8:
+                    continue
+                if any(overlaps(box, other) for other in (*card_boxes, *header_boxes)):
+                    continue
+                if any(
+                    overlaps(box, other) or _process_svg_path_hits_box(peer, box)
+                    for peer, other in occupied.values()
+                ):
+                    continue
+                distance = _process_label_path_distance_sq(path, box)
+                if distance is None or distance > 40**2:
+                    continue
+                if any(
+                    (peer_distance := _process_label_path_distance_sq(peer, box)) is None
+                    or peer_distance <= distance
+                    for peer, _ in occupied.values()
+                ):
+                    continue
+                chosen = candidate, box
+                break
+            if chosen is not None:
+                break
+        if chosen is None:
+            return None
+        candidate, box = chosen
+        result[edge_id] = candidate.path, box[0]+lw/2, box[1]+lh/2
+        occupied[edge_id] = candidate.path, box
+        prior.append({"from": source_id, "to": target_id, "points": candidate.points})
+        nodes.append(dict(
+            id="__label_"+edge_id, type="node", x=box[0], y=box[1], width=lw, height=lh,
+        ))
+    return result
+
+
 def _process_local_self_loop_plan(
     source: tuple[int, int],
     own_box: tuple[float, float, float, float],
@@ -3558,6 +3706,7 @@ def _render_edge(
     final_label_override: tuple[float, float] | None = None,
     process_row_card_side_path: str | None = None,
     process_local_self_loop_path: str | None = None,
+    mixed_process_path: str | None = None,
 ) -> list[str]:
     kind = str(edge["kind"])
     color, dash, width = _EDGE_STYLE[kind]
@@ -3692,6 +3841,11 @@ def _render_edge(
             raise ValueError("invalid local process self-loop route")
         path = process_local_self_loop_path
         route = "process-local-self-loop"
+    if mixed_process_path is not None:
+        if intent != "process":
+            raise ValueError("invalid mixed process route")
+        path = mixed_process_path
+        route = "process-mixed-card-safe"
     if long_vertical_label_x is not None and route == "vertical":
         label_x = long_vertical_label_x
     dash_attribute = f' stroke-dasharray="{dash}"' if dash else ""
@@ -8207,6 +8361,7 @@ def render_native_diagram(
         card_source_port_x: float | None = None,
         card_side_route_path: str | None = None,
         local_self_loop_path: str | None = None,
+        mixed_process_path: str | None = None,
     ) -> list[str]:
         return _render_edge(
                 edge,
@@ -8284,6 +8439,7 @@ def render_native_diagram(
                 final_label_override=label_position_override,
                 process_row_card_side_path=card_side_route_path,
                 process_local_self_loop_path=local_self_loop_path,
+                mixed_process_path=mixed_process_path,
             )
 
     # Keep the established renderer byte-for-byte for all unaffected edges.
@@ -10926,6 +11082,41 @@ def render_native_diagram(
                 value, _process_group_gap_extra=_process_group_gap_extra,
                 _process_loop_gap_extra=max(216, math.ceil(reserve)),
             )
+
+        if (
+            _process_loop_gap_extra and dense_by_source
+            and any(edge["from"] != edge["to"] for edge in paint_edges)
+        ):
+            mixed_plan = _process_mixed_dense_plan(
+                positions, paint_edges, loop_layout, dense_by_source,
+                canvas_width=width, canvas_height=height,
+                card_boxes=cards, header_boxes=headers,
+            )
+            if mixed_plan is not None:
+                dense_ids = {
+                    str(edge["id"]) for stack in dense_by_source.values() for edge in stack
+                }
+                fragments = {}
+                for edge in paint_edges:
+                    edge_id = str(edge["id"])
+                    path, cx, cy = mixed_plan[edge_id]
+                    fragment = render_planned_edge(
+                        edge,
+                        local_self_loop_path=path if edge_id in dense_ids else None,
+                        mixed_process_path=path if edge_id not in dense_ids else None,
+                        label_position_override=(cx, cy),
+                    )
+                    actual_path, actual_box = loop_parts(fragment)
+                    if (
+                        actual_path != path
+                        or abs(actual_box[0]+actual_box[2]/2-cx) > .1
+                        or abs(actual_box[1]+actual_box[3]/2-cy) > .1
+                    ):
+                        break
+                    fragments[edge_id] = fragment
+                else:
+                    planned_edge_lines.update(fragments)
+                    ordered_loops = []
 
         unresolved_loop_ids = []
         for edge in ordered_loops:

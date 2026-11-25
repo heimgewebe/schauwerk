@@ -1815,6 +1815,7 @@ function placeLiveEdgeConflict(edgeState, conflict) {
 function refreshProcessLocalSelfLoops() {
   if (documentMode || svg.dataset.intent !== "process") return;
   const loops = [...edges.values()].filter(edge => edge.route === "process-local-self-loop");
+  const mixed = [...edges.values()].filter(edge => edge.route === "process-mixed-card-safe");
   if (!loops.length) return;
   const frame = svg.viewBox.baseVal;
   const cards = [...nodes.keys()].map(id => [id, liveBounds(id)]).filter(([, b]) => b);
@@ -1852,10 +1853,25 @@ function refreshProcessLocalSelfLoops() {
   const pathPoints = path => {
     if (!/^[ML0-9.,\s-]+$/.test(path)) return null;
     const parts = [...path.matchAll(/([ML])\s*([^ML]*)/g)];
-    if (![4, 6].includes(parts.length) || parts[0][1] !== "M" ||
+    if (parts.length < 2 || parts.length > 128 || parts[0][1] !== "M" ||
         parts.slice(1).some(part => part[1] !== "L")) return null;
     const points = parts.map(part => (part[2].match(/-?(?:\d+(?:\.\d*)?|\.\d+)/g) || []).map(Number));
     return points.every(p => p.length === 2 && p.every(Number.isFinite)) ? points : null;
+  };
+  const sampledPath = (edge,path) => {
+    const linear=pathPoints(path);
+    if (linear) return linear;
+    const old=edge.path.getAttribute("d");
+    try {
+      edge.path.setAttribute("d",path);
+      const length=edge.path.getTotalLength();
+      const count=Math.max(2,Math.min(128,Math.ceil(length/6)));
+      return Array.from({length:count+1},(_,i)=>{
+        const p=edge.path.getPointAtLength(length*i/count);
+        return [p.x,p.y];
+      });
+    } catch (_) { return []; }
+    finally { edge.path.setAttribute("d",old||""); }
   };
   const serialize = points => points.map((p, i) =>
     (i === 0 ? "M " : "L ") + p.map(v => v.toFixed(1)).join(" ")
@@ -1873,22 +1889,12 @@ function refreshProcessLocalSelfLoops() {
   });
   const reserved = [];
   for (const peer of edges.values()) {
-    if (peer.route === "process-local-self-loop") continue;
+    if (peer.route === "process-local-self-loop" || peer.route === "process-mixed-card-safe") continue;
     const w = Number(peer.labelRect?.getAttribute("width") || 0);
     const h = Number(peer.labelRect?.getAttribute("height") || 0);
     if (!w || !h) continue;
-    let points = pathPoints(peer.path.getAttribute("d") || "");
-    if (!points) {
-      try {
-        const length = peer.path.getTotalLength();
-        const count = Math.max(2, Math.min(128, Math.ceil(length / 8)));
-        points = Array.from({length: count+1}, (_, i) => {
-          const p = peer.path.getPointAtLength(length*i/count);
-          return [p.x,p.y];
-        });
-      } catch (_) { points = []; }
-    }
-    reserved.push({points, box:labelBox(peer.naturalLabelX, peer.naturalLabelY,w,h)});
+    const points=sampledPath(peer,peer.path.getAttribute("d")||"");
+    reserved.push({edge:peer,points,box:labelBox(peer.naturalLabelX,peer.naturalLabelY,w,h)});
   }
   for (const edge of loops) {
     const base = pathPoints(edge.basePath);
@@ -1955,7 +1961,148 @@ function refreshProcessLocalSelfLoops() {
     placeLiveEdgeConflict(edge,!chosen);
     if (chosen) edge.element.removeAttribute("data-label-conflict");
     else edge.element.dataset.labelConflict = "true";
-    reserved.push({points:geometry.points,box:boxFor(geometry)});
+    reserved.push({edge,points:geometry.points,box:boxFor(geometry)});
+  }
+  if (!mixed.length) return;
+  if (unchanged) {
+    for (const edge of mixed) {
+      edge.path.setAttribute("d", edge.basePath);
+      edge.hitPath.setAttribute("d", edge.basePath);
+      resetEdgeLabel(edge);
+      placeLiveEdgeConflict(edge, false);
+      edge.element.removeAttribute("data-label-conflict");
+    }
+    return;
+  }
+
+  // The server reserves a whole labelled stack before routing its ordinary
+  // peers. Use the existing browser smart router with the same live envelope.
+  const liveNodes = cards.map(([id,b]) => ({id,type:"node",...b}));
+  const nodeById = new Map(liveNodes.map(n => [n.id,n]));
+  const stackBoxes = new Map();
+  for (const peer of reserved) {
+    if (peer.edge?.route !== "process-local-self-loop") continue;
+    const card = nodeById.get(peer.edge.from);
+    if (!card || !peer.points.length) continue;
+    const [x,y] = peer.points[0];
+    const sides = [
+      ["bottom",Math.abs(y-card.y-card.height)],
+      ["top",Math.abs(y-card.y)],
+      ["right",Math.abs(x-card.x-card.width)],
+      ["left",Math.abs(x-card.x)],
+    ].sort((a,b)=>a[1]-b[1]);
+    const side = sides[0][0], key = JSON.stringify([card.id,side]);
+    const xs = [...peer.points.map(p=>p[0]),peer.box[0],peer.box[2]];
+    const ys = [...peer.points.map(p=>p[1]),peer.box[1],peer.box[3]];
+    const box = [Math.min(...xs),Math.min(...ys),Math.max(...xs),Math.max(...ys)];
+    if (side==="bottom") box[1]=Math.max(box[1],card.y+card.height+.1);
+    if (side==="top") box[3]=Math.min(box[3],card.y-.1);
+    if (side==="right") box[0]=Math.max(box[0],card.x+card.width+.1);
+    if (side==="left") box[2]=Math.min(box[2],card.x-.1);
+    const old = stackBoxes.get(key);
+    stackBoxes.set(key,old ? [Math.min(old[0],box[0]),Math.min(old[1],box[1]),
+      Math.max(old[2],box[2]),Math.max(old[3],box[3])] : box);
+  }
+  const headers = [...svg.querySelectorAll('[data-source-kind="group"] > rect')].map(r =>
+    rect(Number(r.getAttribute("x")),Number(r.getAttribute("y")),
+      Number(r.getAttribute("width")),44));
+  headers.push([frame.x,frame.y,frame.x+frame.width,headerBottom]);
+  const stackObstacles = [...stackBoxes.values()];
+  const addObstacle = (box,id) => {
+    if (box[2]>box[0] && box[3]>box[1]) liveNodes.push({
+      id,type:"node",x:box[0],y:box[1],width:box[2]-box[0],height:box[3]-box[1],
+    });
+  };
+  [...stackObstacles,...headers].forEach((box,i)=>addObstacle(box,"__process_obstacle_"+i));
+  for (const peer of reserved) {
+    if (peer.edge?.route !== "process-local-self-loop")
+      addObstacle(peer.box,"__process_label_"+peer.edge?.id);
+  }
+  const distanceSq = (points,x,y) => {
+    let best=Infinity;
+    for (const [a,b] of segments(points)) {
+      const dx=b[0]-a[0],dy=b[1]-a[1],d=dx*dx+dy*dy;
+      const t=d ? Math.min(1,Math.max(0,((x-a[0])*dx+(y-a[1])*dy)/d)) : 0;
+      best=Math.min(best,(x-a[0]-t*dx)**2+(y-a[1]-t*dy)**2);
+    }
+    return best;
+  };
+  const prior=[];
+  for (const edge of mixed) {
+    const source=nodeById.get(edge.from), target=nodeById.get(edge.to);
+    if (!source || !target) continue;
+    const w=Number(edge.labelRect?.getAttribute("width")||0);
+    const h=Number(edge.labelRect?.getAttribute("height")||0);
+    const chooseLabel=(path,points,preferred) => {
+      if (!points.length || !knowledgePathAvoidsCards(edge,path) ||
+          points.some(([x,y])=>x<frame.x+8||y<headerBottom||
+            x>frame.x+frame.width-8||y>frame.y+frame.height-8) ||
+          [...stackObstacles,...headers].some(b=>pathHits(points,b))) return null;
+      if (reserved.some(peer=>{
+        const cx=(peer.box[0]+peer.box[2])/2,cy=(peer.box[1]+peer.box[3])/2;
+        return pathHits(points,peer.box,2)||sharedStroke(points,peer.points)||
+          distanceSq(points,cx,cy)<=distanceSq(peer.points,cx,cy);
+      })) return null;
+      const candidates=[preferred];
+      for (const [a,b] of segments(points)) {
+        for (const t of [.25,.5,.75]) candidates.push([
+          a[0]+t*(b[0]-a[0]),a[1]+t*(b[1]-a[1])]);
+      }
+      candidates.sort((a,b)=>
+        Math.abs(a[0]-preferred[0])+Math.abs(a[1]-preferred[1])-
+        Math.abs(b[0]-preferred[0])-Math.abs(b[1]-preferred[1]));
+      for (const [x,y] of candidates) {
+        const box=labelBox(x,y,w,h),own=distanceSq(points,x,y);
+        if (own>1 || !inside(box) || bounds.some(([,b])=>intersects(box,b)) ||
+            headers.some(b=>intersects(box,b)) ||
+            reserved.some(peer=>intersects(box,peer.box)||pathHits(peer.points,box,2)||
+              distanceSq(peer.points,x,y)<=own)) continue;
+        return {path,points,x,y,box};
+      }
+      return null;
+    };
+    const fromOffset=nodeOffset(overrides,edge.from,documentOffsetBudget);
+    const toOffset=nodeOffset(overrides,edge.to,documentOffsetBudget);
+    const anchored=nudgedCertifiedKnowledgePath(edge,fromOffset,toOffset);
+    const anchoredLabel=anchored ? nudgedKnowledgeLabel(edge,anchored) : null;
+    let plan=anchored && anchoredLabel ? chooseLabel(
+      anchored,sampledPath(edge,anchored),[anchoredLabel.x,anchoredLabel.y]) : null;
+    if (!plan) {
+      const sides=["left","right","top","bottom"];
+      const ports=[[null,null],...sides.flatMap(a=>sides.map(b=>[a,b]))];
+      for (const [fromSide,toSide] of ports) {
+        const candidate=smartEdgeGeometry(source,target,liveNodes,{
+          fromSide,toSide,priorRoutes:prior.slice(-12),
+        });
+        if (!candidate?.collisionFree) continue;
+        plan=chooseLabel(candidate.path,sampledPath(edge,candidate.path),
+          [candidate.labelX,candidate.labelY]);
+        if (plan) break;
+      }
+    }
+    if (plan) {
+      edge.path.setAttribute("d",plan.path);
+      edge.hitPath.setAttribute("d",plan.path);
+      edge.naturalLabelX=plan.x;edge.naturalLabelY=plan.y;
+      placeLiveLabel(edge,plan.x,plan.y);
+      placeLiveEdgeConflict(edge,false);
+      edge.element.removeAttribute("data-label-conflict");
+      reserved.push({edge,points:plan.points,box:plan.box});
+      addObstacle(plan.box,"__process_mixed_label_"+prior.length);
+      prior.push({from:edge.from,to:edge.to,points:plan.points});
+    } else {
+      // An exhausted local search must not masquerade as a certified route.
+      const fallback=liveEdgeGeometry(source,target,{
+        selfLoop:edge.from===edge.to,kind:edge.kind,lane:edge.lane,
+        canvasWidth:frame.width,canvasHeight:frame.height,
+      });
+      edge.path.setAttribute("d",fallback.path);
+      edge.hitPath.setAttribute("d",fallback.path);
+      edge.naturalLabelX=fallback.labelX;edge.naturalLabelY=fallback.labelY;
+      placeLiveLabel(edge,fallback.labelX,fallback.labelY);
+      placeLiveEdgeConflict(edge,true);
+      edge.element.dataset.labelConflict="true";
+    }
   }
 }
 
@@ -2224,7 +2371,7 @@ function updateEdgeGeometry(edgeId) {
   const edgeState = edges.get(edgeId);
   if (!edgeState) return;
   // The local loop planner owns both its stroke and label after node updates.
-  if (!documentMode && edgeState.route === "process-local-self-loop") return;
+  if (!documentMode && ["process-local-self-loop","process-mixed-card-safe"].includes(edgeState.route)) return;
   const fromOffset = nodeOffset(overrides, edgeState.from, documentOffsetBudget);
   const toOffset = nodeOffset(overrides, edgeState.to, documentOffsetBudget);
   if (documentMode && routingMode() === "smart") {
