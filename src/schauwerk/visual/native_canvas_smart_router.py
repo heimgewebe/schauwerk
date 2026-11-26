@@ -341,6 +341,62 @@ def _dijkstra(
     return tuple(reversed(result))
 
 
+def _self_loop_anchor(node: Mapping[str, Any], side: str, fraction: float) -> Point:
+    x, y, right, bottom = _rect(node, 0.0)
+    if side in ("left", "right"):
+        return (x if side == "left" else right, y + (bottom-y)*fraction)
+    return (x + (right-x)*fraction, y if side == "top" else bottom)
+
+
+def _clear_self_loop_curve(
+    node: Mapping[str, Any], nodes: Sequence[Mapping[str, Any]], *,
+    from_side: str | None, to_side: str | None, lane: float, clearance: float,
+) -> SmartEdgeRoute | None:
+    """Keep the familiar outward arc, but choose only a certified free side."""
+    obstacles = [
+        _rect(n, clearance) for n in nodes
+        if n["id"] != node["id"] and n.get("type") != "group"
+    ]
+    reach = 66.0 + abs(lane)
+    x, y, right, bottom = _rect(node, 0.0)
+    for side in PORTS:
+        if from_side not in (None, side) or to_side not in (None, side):
+            continue
+        start = _self_loop_anchor(node, side, 0.35)
+        end = _self_loop_anchor(node, side, 0.72)
+        normal = NORMALS[side]
+        c1, c2 = _add(start, normal, reach), _add(end, normal, reach)
+        if from_side is None and to_side is None:
+            # Rotate the established broad automatic right-hand arc.
+            if side in ("left", "right"):
+                c1, c2 = (c1[0], y-18.0), (c2[0], bottom+18.0)
+            else:
+                c1, c2 = (x-18.0, c1[1]), (right+18.0, c2[1])
+        controls = (start, c1, c2, end)
+        if not _curve_hull_clear(controls, obstacles):
+            continue
+
+        def at(t: float) -> Point:
+            u = 1.0-t
+            return (
+                u**3*start[0]+3*u*u*t*c1[0]+3*u*t*t*c2[0]+t**3*end[0],
+                u**3*start[1]+3*u*u*t*c1[1]+3*u*t*t*c2[1]+t**3*end[1],
+            )
+
+        points = tuple(at(t) for t in (0.0, 0.25, 0.5, 0.75, 1.0))
+        label = _add(points[2], normal, 18.0)
+        return SmartEdgeRoute(
+            path="M "+_round_point(start)+" C "+" ".join(
+                _round_point(p) for p in (c1, c2, end)
+            ),
+            label_x=label[0], label_y=label[1],
+            bounds=(min(p[0] for p in controls), min(p[1] for p in controls),
+                    max(p[0] for p in controls), max(p[1] for p in controls)),
+            points=points, from_side=side, to_side=side, collision_free=True,
+        )
+    return None
+
+
 def route_edge(
     source: Mapping[str, Any], target: Mapping[str, Any],
     nodes: Sequence[Mapping[str, Any]], *,
@@ -355,10 +411,10 @@ def route_edge(
 
     None means no certified clear path under the budget; callers must expose an
     explicit routing conflict and must NOT identify an old simple curve as clear.
-    Self-edges remain owned by the existing renderer-specific loop routine.
+    Self-edges first try a certified outward arc, then the same visibility
+    graph as other edges while preserving explicit ports.
     """
-    if source["id"] == target["id"]:
-        return None
+    self_loop = source["id"] == target["id"]
     if from_side is not None and from_side not in PORTS:
         raise ValueError("invalid from_side")
     if to_side is not None and to_side not in PORTS:
@@ -368,6 +424,13 @@ def route_edge(
     if max_lane is not None and (not math.isfinite(max_lane) or max_lane < 0):
         raise ValueError("invalid parallel edge lane range")
     src_id,tgt_id=source["id"],target["id"]
+    if self_loop:
+        loop = _clear_self_loop_curve(
+            source, nodes, from_side=from_side, to_side=to_side,
+            lane=lane, clearance=clearance,
+        )
+        if loop is not None:
+            return loop
     # Reciprocal/parallel edges share the same unordered-endpoint lane ranks.
     # Merely offsetting their ports lets the shortest-path search converge on
     # the same obstacle corners: the later hit path then hides the earlier one.
@@ -375,7 +438,7 @@ def route_edge(
     # 22px endpoint stubs and their preferred sides remain available.
     rail_step = (
         min(4.0 / 3.0, 96.0 / max(18.0, 2.0 * max_lane))
-        if max_lane is not None and max_lane > 0.0 else 0.0
+        if not self_loop and max_lane is not None and max_lane > 0.0 else 0.0
     )
     rail_before = min(96.0, max(0.0, (max_lane or 0.0) - lane) * rail_step)
     rail_after = min(96.0, max(0.0, (max_lane or 0.0) + lane) * rail_step)
@@ -415,22 +478,30 @@ def route_edge(
 
     # Source and target rectangles prevent a computed detour from re-entering
     # either endpoint.  The first/last 22px stubs are handled independently.
-    source_box=_rect(source,clearance*0.6)
-    target_box=_rect(target,clearance*0.6)
+    # Separate the self-loop graph rails, not just the endpoint stubs.
+    # Fit all loop slots into the bounded rail budget without saturation.
+    loop_rail = (
+        abs(lane) * min(1.0, 96.0 / max(1.0, abs(lane), 2.0 * (max_lane or 0.0)))
+        if self_loop else 0.0
+    )
+    source_box=_rect(source,clearance*0.6+loop_rail)
+    target_box=_rect(target,clearance*0.6+loop_rail)
     all_boxes=tuple(blocking)+(source_box,target_box)
     source_sides=PORTS if from_side is None else (from_side,)
     target_sides=PORTS if to_side is None else (to_side,)
-    stub=max(22.0,clearance+10.0)
+    stub=max(22.0,clearance+10.0)+loop_rail
     candidates=[]
     for si,ss in enumerate(source_sides):
-        start=_side_anchor(source,ss,lane,max_lane)
+        start=(_self_loop_anchor(source,ss,0.35) if self_loop
+               else _side_anchor(source,ss,lane,max_lane))
         start_exit=_add(start,NORMALS[ss],stub)
-        if not _clear(start,start_exit,(*blocking,target_box)):
+        if not _clear(start,start_exit,blocking if self_loop else (*blocking,target_box)):
             continue
         for ti,ts in enumerate(target_sides):
-            end=_side_anchor(target,ts,lane,max_lane)
+            end=(_self_loop_anchor(target,ts,0.72) if self_loop
+                 else _side_anchor(target,ts,lane,max_lane))
             end_exit=_add(end,NORMALS[ts],stub)
-            if not _clear(end_exit,end,(*blocking,source_box)):
+            if not _clear(end_exit,end,blocking if self_loop else (*blocking,source_box)):
                 continue
             candidates.append((si,ti,ss,ts,start,start_exit,end_exit,end))
     if not candidates:
@@ -472,7 +543,7 @@ def route_edge(
     # Prefer the original, uninterrupted cubic whenever an automatic single
     # connection can take it safely. This keeps smart routing aesthetically
     # identical to simple routing in open space; detours remain collision-safe.
-    if lane == 0.0 and not (max_lane or 0.0) and not crossing_segments:
+    if not self_loop and lane == 0.0 and not (max_lane or 0.0) and not crossing_segments:
         sx = float(source["x"]) + float(source["width"]) / 2
         sy = float(source["y"]) + float(source["height"]) / 2
         tx = float(target["x"]) + float(target["width"]) / 2

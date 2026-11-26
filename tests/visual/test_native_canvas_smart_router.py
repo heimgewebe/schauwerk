@@ -100,9 +100,47 @@ def test_groups_are_visual_surfaces_not_solid_obstacles():
     assert result.label_y==pytest.approx(40.0)
 
 
-def test_self_edges_delegate_to_existing_loop_router():
-    a=node("a",0,0)
-    assert route_edge(a,a,[a]) is None
+def test_smart_self_loop_uses_free_side_and_respects_fixed_ports():
+    a = node("a", 0, 0, 200, 100)
+    b = node("b", 220, 0, 200, 100)
+    original = route_edge(a, a, [a])
+    assert original and original.from_side == original.to_side == "right"
+    result = route_edge(a, a, [a, b])
+    assert result and result.collision_free
+    assert result.from_side == result.to_side == "left"
+    for x, y in _sample_path(result.path):
+        assert not (0 < x < 200 and 0 < y < 100)
+        assert not (208 < x < 432 and -12 < y < 112)
+    assert route_edge(a, a, [a, b], from_side="right", to_side="right") is None
+    fixed = route_edge(a, a, [a], from_side="top", to_side="bottom")
+    assert fixed and (fixed.from_side, fixed.to_side) == ("top", "bottom")
+    assert fixed.points[0][1] == 0 and fixed.points[-1][1] == 100
+    for x, y in _sample_path(fixed.path):
+        assert not (0 < x < 200 and 0 < y < 100)
+    second = route_edge(a, a, [a, b], lane=18)
+    assert second and second.path != result.path
+
+
+def test_fixed_opposite_self_loops_use_distinct_bounded_rails():
+    a = node("a", 0, 0, 200, 100)
+    # Nine loops exceed the previous saturating stub budget.
+    routes = [
+        route_edge(a, a, [a], from_side="top", to_side="bottom",
+                   lane=slot * 18, max_lane=72)
+        for slot in range(9)
+    ]
+    assert all(route is not None for route in routes)
+    assert len({route.path for route in routes}) == len(routes)
+    # Different endpoint stubs alone do not keep the side rail selectable.
+    side_rails = [max(x for x, _ in route.points) for route in routes]
+    assert all(b-a >= 10 for a, b in zip(side_rails, side_rails[1:]))
+    assert side_rails[-1] - side_rails[0] <= 96.01
+    for route in routes:
+        assert (route.from_side, route.to_side) == ("top", "bottom")
+        assert route.points[0][1] == 0 and route.points[-1][1] == 100
+        assert route.collision_free
+        assert not any(0 < x < 200 and 0 < y < 100
+                       for x, y in _sample_path(route.path))
 
 
 def test_invalid_ports_and_budget_fail_explicitly():

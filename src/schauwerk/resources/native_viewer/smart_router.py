@@ -195,8 +195,47 @@ function crossingSegments(priorRoutes, sourceId, targetId) {
   return segments;
 }
 
+function selfLoopAnchor(node, side, fraction) {
+  const [x, y, right, bottom] = rect(node);
+  if (side === "left" || side === "right")
+    return [side === "left" ? x : right, y + (bottom-y)*fraction];
+  return [x + (right-x)*fraction, side === "top" ? y : bottom];
+}
+function clearSelfLoopCurve(node, nodes, fromSide, toSide, lane, clearance) {
+  const obstacles = nodes.filter(n => n.id !== node.id && n.type !== "group")
+    .map(n => rect(n, clearance));
+  const reach = 66 + Math.abs(lane);
+  const [x, y, right, bottom] = rect(node);
+  for (const side of PORTS) {
+    if ((fromSide !== null && fromSide !== side) ||
+        (toSide !== null && toSide !== side)) continue;
+    const start = selfLoopAnchor(node, side, 0.35);
+    const end = selfLoopAnchor(node, side, 0.72);
+    const normal = NORMALS[side];
+    let c1 = add(start, normal, reach), c2 = add(end, normal, reach);
+    if (fromSide === null && toSide === null) {
+      if (side === "left" || side === "right") {
+        c1 = [c1[0], y-18]; c2 = [c2[0], bottom+18];
+      } else {
+        c1 = [x-18, c1[1]]; c2 = [right+18, c2[1]];
+      }
+    }
+    if (!hullClear([start, c1, c2, end], obstacles)) continue;
+    const at = t => {
+      const u = 1-t;
+      return [0, 1].map(i =>
+        u*u*u*start[i]+3*u*u*t*c1[i]+3*u*t*t*c2[i]+t*t*t*end[i]);
+    };
+    const points = [0, 0.25, 0.5, 0.75, 1].map(at);
+    const label = add(points[2], normal, 18);
+    return {path: "M "+formatPoint(start)+" C "+[c1,c2,end].map(formatPoint).join(" "),
+      labelX: label[0], labelY: label[1], points,
+      fromSide: side, toSide: side, collisionFree: true};
+  }
+  return null;
+}
 export function smartEdgeGeometry(source, target, nodes, options = {}) {
-  if (source.id === target.id) return null;
+  const selfLoop = source.id === target.id;
   const fromSide = options.fromSide ?? null, toSide = options.toSide ?? null;
   const priorSegments = crossingSegments(options.priorRoutes, source.id, target.id);
   const readabilityRetry = options._readabilityRetry === true;
@@ -211,10 +250,14 @@ export function smartEdgeGeometry(source, target, nodes, options = {}) {
   if (!Number.isFinite(lane) ||
       (maxLane !== null && (!Number.isFinite(maxLane) || maxLane < 0)))
     return null;
+  if (selfLoop) {
+    const loop = clearSelfLoopCurve(source, nodes, fromSide, toSide, lane, clearance);
+    if (loop) return loop;
+  }
   // Mirror the Python transverse rail reservation. A shared obstacle
   // corridor must not hide earlier reciprocal/parallel edge hit paths.
   // Along-route clearance remains fixed to preserve the endpoint stubs.
-  const railStep = maxLane !== null && maxLane > 0
+  const railStep = !selfLoop && maxLane !== null && maxLane > 0
     ? Math.min(4 / 3, 96 / Math.max(18, 2 * maxLane)) : 0;
   const railBefore = Math.min(96, Math.max(0, (maxLane ?? 0) - lane) * railStep);
   const railAfter = Math.min(96, Math.max(0, (maxLane ?? 0) + lane) * railStep);
@@ -239,27 +282,34 @@ export function smartEdgeGeometry(source, target, nodes, options = {}) {
       ? smartEdgeGeometry(source, target, nodes,
           {...options, _useRailReservation: false})
       : null;
-  const sourceBox = rect(source, clearance * 0.6);
-  const targetBox = rect(target, clearance * 0.6);
+  // Match Python's bounded, distinct radial graph rails for self-loops.
+  const loopRail = selfLoop
+    ? Math.abs(lane) * Math.min(1, 96 / Math.max(1, Math.abs(lane), (maxLane ?? 0)))
+    : 0;
+  const sourceBox = rect(source, clearance * 0.6 + loopRail);
+  const targetBox = rect(target, clearance * 0.6 + loopRail);
   const allBoxes = [...blocking, sourceBox, targetBox];
   const sourceSides = fromSide === null ? PORTS : [fromSide];
   const targetSides = toSide === null ? PORTS : [toSide];
-  const stub = Math.max(22, clearance + 10), candidates = [];
+  const stub = Math.max(22, clearance + 10) + loopRail;
+  const candidates = [];
   sourceSides.forEach((ss, si) => {
-    const start = sideAnchor(source, ss, lane, maxLane);
+    const start = selfLoop ? selfLoopAnchor(source, ss, 0.35)
+      : sideAnchor(source, ss, lane, maxLane);
     const ex = add(start, NORMALS[ss], stub);
-    if (!clear(start, ex, [...blocking, targetBox])) return;
+    if (!clear(start, ex, selfLoop ? blocking : [...blocking, targetBox])) return;
     targetSides.forEach((ts, ti) => {
-      const end = sideAnchor(target, ts, lane, maxLane);
+      const end = selfLoop ? selfLoopAnchor(target, ts, 0.72)
+        : sideAnchor(target, ts, lane, maxLane);
       const ent = add(end, NORMALS[ts], stub);
-      if (clear(ent, end, [...blocking, sourceBox]))
+      if (clear(ent, end, selfLoop ? blocking : [...blocking, sourceBox]))
         candidates.push([si, ti, ss, ts, start, ex, ent, end]);
     });
   });
   if (!candidates.length) return retryPhysical();
   // Preserve the native cubic when the unconstrained connection is truly
   // clear. Nearby obstacles and parallel/crossing contexts still use routing.
-  if (lane === 0 && !(maxLane ?? 0) && !priorSegments.length) {
+  if (!selfLoop && lane === 0 && !(maxLane ?? 0) && !priorSegments.length) {
     const sx = Number(source.x) + Number(source.width) / 2;
     const sy = Number(source.y) + Number(source.height) / 2;
     const tx = Number(target.x) + Number(target.width) / 2;
