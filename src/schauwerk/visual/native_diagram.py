@@ -11139,6 +11139,14 @@ def render_native_diagram(
                         math.sqrt(new_distance) > math.sqrt(old_distance)+8
                     ):
                         continue
+                    # Do not turn an existing caption association or tie
+                    # into a preference for a foreign stroke.
+                    if new_distance > old_distance + 1e-6 and any(
+                        (distance := _process_label_path_distance_sq(peer_path, own_box))
+                        is not None and distance <= new_distance + 1e-6
+                        for _, peer_path, _ in peers
+                    ):
+                        continue
                     if any(
                         (_process_svg_path_hits_box(proposal, box)
                          and not _process_svg_path_hits_box(path, box))
@@ -11164,6 +11172,177 @@ def render_native_diagram(
                     )
                     label_layout[edge_id] = proposal, own_box
                     break
+
+        # Locally separate shared orthogonal rails after label placement.
+        # Only accept a strictly better route with no new collisions.
+        if len(paint_edges) <= 40:
+            def shared_length(path, peer):
+                first = _process_axis_aligned_stroke_spans(path)
+                second = _process_axis_aligned_stroke_spans(peer)
+                if first is None or second is None:
+                    return math.inf
+                return sum(
+                    max(0.0, min(a[3], b[3]) - max(a[2], b[2]))
+                    for a in first for b in second
+                    if a[0] == b[0] and abs(a[1] - b[1]) < 4
+                )
+
+            for edge_id, edge in sorted(edge_by_id.items()):
+                source_id, target_id = str(edge["from"]), str(edge["to"])
+                if source_id == target_id:
+                    continue
+                peers = [
+                    (other_id, other_path, other_box)
+                    for other_id, (other_path, other_box) in label_layout.items()
+                    if other_id != edge_id
+                ]
+                for _ in range(2):
+                    path, own_box = label_layout[edge_id]
+                    segments = _process_svg_stroke_segments(path)
+                    if not segments or len(segments) < 2 or any(
+                        len(s) != 2 or (s[0][0] != s[1][0] and s[0][1] != s[1][1])
+                        for s in segments
+                    ):
+                        break
+                    points = [segments[0][0], *(s[-1] for s in segments)]
+                    old_overlap = [shared_length(path, other) for _, other, _ in peers]
+                    if any(not math.isfinite(value) for value in old_overlap):
+                        break
+                    if max(old_overlap, default=0) < 8:
+                        break
+                    old_distance = _process_label_path_distance_sq(path, own_box)
+                    if old_distance is None:
+                        break
+                    old_length = sum(math.dist(a, b) for a, b in zip(points, points[1:]))
+                    best = None
+                    for i, (first, last) in enumerate(segments):
+                        axis = 0 if first[0] == last[0] else 1
+                        normal = 1 - axis
+                        if abs(first[normal] - last[normal]) < 16:
+                            continue
+                        stroke = f"M {first[0]} {first[1]} L {last[0]} {last[1]}"
+                        if not any(shared_length(stroke, peer) >= 8 for _, peer, _ in peers):
+                            continue
+                        for delta in (-12, 12, -16, 16, -24, 24, -32, 32):
+                            trial = [list(q) for q in points]
+                            trial[i][axis] += delta
+                            trial[i+1][axis] += delta
+                            if any(
+                                abs(b[0] - a[0]) > .01 and abs(b[1] - a[1]) > .01
+                                or math.dist(a, b) < 4
+                                or (b[0]-a[0])*(d[0]-c[0]) + (b[1]-a[1])*(d[1]-c[1]) <= 0
+                                for a, b, c, d in zip(trial, trial[1:], points, points[1:])
+                            ):
+                                continue
+                            if any(
+                                not (8 <= x <= width - 8 and 104 <= y <= height - 8)
+                                for x, y in trial
+                            ):
+                                continue
+                            # A moved terminal rail may also separate an incoming
+                            # arrow from an outgoing stroke at the same card.
+                            moved_ports = []
+                            if i == 0:
+                                moved_ports.append((source_id, trial[0]))
+                            if i == len(segments)-1:
+                                moved_ports.append((target_id, trial[-1]))
+                            port_ok = True
+                            for nid, port in moved_ports:
+                                x, y = positions[nid]
+                                low = (x, y)[axis] + 20
+                                high = (x + _NODE_WIDTH, y + _NODE_HEIGHT)[axis] - 20
+                                if not low <= port[axis] <= high:
+                                    port_ok = False
+                                    break
+                                for other_id, other, _ in peers:
+                                    other_edge = edge_by_id[other_id]
+                                    other_segments = _process_svg_stroke_segments(other)
+                                    if not other_segments:
+                                        port_ok = False
+                                        break
+                                    if (
+                                        str(other_edge["from"]) == nid
+                                        and math.dist(port, other_segments[0][0]) < 12
+                                    ) or (
+                                        str(other_edge["to"]) == nid
+                                        and math.dist(port, other_segments[-1][-1]) < 12
+                                    ):
+                                        port_ok = False
+                                        break
+                            if not port_ok:
+                                continue
+                            proposal = " ".join(
+                                f"{'M' if j == 0 else 'L'} {x:.1f} {y:.1f}"
+                                for j, (x, y) in enumerate(trial)
+                            )
+                            lengths = [shared_length(proposal, peer) for _, peer, _ in peers]
+                            if any(not math.isfinite(value) for value in lengths):
+                                continue
+                            reduction = sum(old_overlap) - sum(lengths)
+                            if reduction < 8 or any(
+                                b > a + .01 for a, b in zip(old_overlap, lengths)
+                            ):
+                                continue
+                            length = sum(math.dist(a, b) for a, b in zip(trial, trial[1:]))
+                            if length > old_length + 64:
+                                continue
+                            distance = _process_label_path_distance_sq(proposal, own_box)
+                            if distance is None or math.sqrt(distance) > math.sqrt(old_distance)+12:
+                                continue
+                            if any(
+                                _process_svg_path_hits_box(
+                                    proposal,
+                                    (nx+2, ny+2, _NODE_WIDTH-4, _NODE_HEIGHT-4)
+                                    if nid in {source_id, target_id}
+                                    else (nx, ny, _NODE_WIDTH, _NODE_HEIGHT),
+                                    padding=0,
+                                )
+                                for nid, (nx, ny) in positions.items()
+                            ):
+                                continue
+                            if any(
+                                _process_svg_path_hits_box(proposal, (x, y, w, 44.0), padding=0)
+                                for _, _, x, y, w, _ in regions
+                            ):
+                                continue
+                            if any(
+                                (
+                                    _process_svg_path_hits_box(proposal, box)
+                                    and not _process_svg_path_hits_box(path, box)
+                                ) or (
+                                    (reference := _process_label_path_distance_sq(peer, box))
+                                    is not None
+                                    and (before := _process_label_path_distance_sq(path, box))
+                                    is not None
+                                    and (after := _process_label_path_distance_sq(proposal, box))
+                                    is not None
+                                    and math.sqrt(before) > math.sqrt(reference)+8
+                                    and math.sqrt(after) <= math.sqrt(reference)+8
+                                )
+                                for _, peer, box in peers
+                            ):
+                                continue
+                            if any(
+                                (reference := _process_label_path_distance_sq(peer, own_box))
+                                is not None
+                                and math.sqrt(reference) > math.sqrt(old_distance)+8
+                                and math.sqrt(reference) <= math.sqrt(distance)+8
+                                for _, peer, _ in peers
+                            ):
+                                continue
+                            score = (-reduction, length, abs(delta), proposal)
+                            if best is None or score < best[0]:
+                                best = (score, proposal)
+                    if best is None:
+                        break
+                    proposal = best[1]
+                    fragment = planned_edge_lines[edge_id]
+                    index = next(i for i, line in enumerate(fragment)
+                                 if line.startswith('<path d="') and 'fill="none"' in line)
+                    fragment[index] = re.sub(
+                        r'd="[^"]+"', f'd="{proposal}"', fragment[index], count=1
+                    )
+                    label_layout[edge_id] = proposal, own_box
 
         label_clearances: list[tuple[float, float, float, float]] = []
         for fragment in planned_edge_lines.values():

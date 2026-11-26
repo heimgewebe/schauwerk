@@ -1390,3 +1390,40 @@ def test_reported_sinn_16_24_separates_coincident_destination_ports() -> None:
         for index, (edge_id, port) in enumerate(incoming):
             for other_id, other_port in incoming[index + 1:]:
                 assert dist(port, other_port) >= 2, (edge_id, other_id, port)
+
+
+def test_reported_sinn_destination_port_repair_preserves_caption_association() -> None:
+    """Separating ports must not move a short stroke away from its own caption."""
+    from schauwerk.visual.native_diagram import _process_label_path_distance_sq
+
+    root = ET.fromstring(render_native_diagram(_reported_sinn_16_24_model()))
+    edges = _edges(root)
+    paths = {key: edge.find(SVG + "path").get("d", "") for key, edge in edges.items()}
+    for edge_id, edge in edges.items():
+        rect = edge.find(SVG + "rect")
+        assert rect is not None
+        box = tuple(float(rect.get(key, "0")) for key in ("x", "y", "width", "height"))
+        own = _process_label_path_distance_sq(paths[edge_id], box)
+        assert own is not None
+        for other_id, path in paths.items():
+            if other_id != edge_id:
+                peer = _process_label_path_distance_sq(path, box)
+                assert peer is not None and own <= peer + 1e-6, (edge_id, other_id)
+
+def test_reported_sinn_16_24_has_no_shared_orthogonal_rails() -> None:
+    """Distinct relations may cross but must not run on the same rail."""
+    from itertools import combinations
+
+    from schauwerk.visual.native_diagram import _process_paths_share_physical_stroke
+
+    root = ET.fromstring(render_native_diagram(_reported_sinn_16_24_model()))
+    paths = {
+        edge_id: edge.find(SVG + "path").get("d", "")
+        for edge_id, edge in _edges(root).items()
+    }
+    assert len(paths) == 24
+    assert not [
+        (a, b)
+        for a, b in combinations(paths, 2)
+        if _process_paths_share_physical_stroke(paths[a], paths[b])
+    ]
