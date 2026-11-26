@@ -1254,6 +1254,7 @@ let labelsOnDemandEnabled = false; // Session-only label visibility, never sourc
 let edgeCreateSource = null;
 let edgeReattach = null;
 let keyboardRebuildFocusId = null;
+let rebuildFocusRequestId = null;
 let textEditTarget = null;
 let gesture = null;
 let observationMode = false;
@@ -1537,7 +1538,11 @@ function publishDocumentState(eventName = "native-document-change", document = d
   const canvasState = canvasFromDocument(boundedDocument);
   if (!canvasState) return;
   window.parent.postMessage(
-    { event: eventName, document: boundedDocument, canvas: canvasState, ...(startup ? { startup: true } : {}) },
+    {
+      event: eventName, document: boundedDocument, canvas: canvasState,
+      ...(startup ? { startup: true } : {}),
+      ...(startup && rebuildFocusRequestId ? { restoreFocus: true } : {}),
+    },
     window.location.origin,
   );
 }
@@ -3479,9 +3484,35 @@ function restoreManualViewAfterNativeFrameReplacement() {
       autoFitActive = false;
       applyView();
     }
-    if (typeof pending.focusNodeId === "string")
-      nodes.get(pending.focusNodeId)?.focus({ preventScroll: true });
+    if (typeof pending.focusNodeId === "string") restoreRebuildFocus(pending.focusNodeId);
   } catch (_) { /* Standalone or cross-origin viewers retain default fit. */ }
+}
+
+// A replacement frame starts inert and unfocused, and browsers may ignore
+// focus() from an unfocused subframe. If the direct handoff does not take,
+// the startup sync asks the host to return focus to this frame; the node is
+// focused once the frame receives it. Pointer input or a short timeout drops
+// the request so a later click into the frame is never redirected.
+const REBUILD_FOCUS_REQUEST_MS = 3000;
+function restoreRebuildFocus(nodeId) {
+  const node = nodes.get(nodeId);
+  if (!node) return;
+  node.focus({ preventScroll: true });
+  if (document.activeElement === node) return;
+  rebuildFocusRequestId = nodeId;
+  const drop = () => {
+    rebuildFocusRequestId = null;
+    window.removeEventListener("focus", complete);
+    window.removeEventListener("pointerdown", drop, true);
+  };
+  const complete = () => {
+    const pendingId = rebuildFocusRequestId;
+    drop();
+    if (pendingId) nodes.get(pendingId)?.focus({ preventScroll: true });
+  };
+  window.addEventListener("focus", complete);
+  window.addEventListener("pointerdown", drop, true);
+  setTimeout(drop, REBUILD_FOCUS_REQUEST_MS);
 }
 
 // Node activation completes the same pending relation operation regardless

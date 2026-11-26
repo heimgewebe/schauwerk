@@ -3943,6 +3943,12 @@ window.addEventListener("message", (event) => {
         if (startupSync && activeEngine === "native" && !nativeCanvasRenderStale) {
           nativeFrameReady = true;
           elements.frame.inert = false;
+          // A replacement frame cannot take keyboard focus by itself; return
+          // it only if nothing else in the shell received focus meanwhile.
+          if (message.restoreFocus === true &&
+              (!document.activeElement || document.activeElement === document.body)) {
+            elements.frame.focus({ preventScroll: true });
+          }
           readyStatus = pendingNativeReadyStatus;
           pendingNativeReadyStatus = null;
           syncNativeHistoryControls();
