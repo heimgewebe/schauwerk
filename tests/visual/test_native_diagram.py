@@ -10351,3 +10351,34 @@ def test_pr206_local_group_branch_gutters_remain_in_separate_legal_lanes(
     _parse(render_native_diagram(model))
     model["edges"].reverse()
     _parse(render_native_diagram(model))
+
+
+@pytest.mark.parametrize("reverse_order", [False, True])
+def test_ambiguous_knowledge_map_loops_keep_collision_free_fallback(
+    reverse_order: bool,
+) -> None:
+    """An unattainable ownership margin must not suppress collision repair."""
+    model = _minimal_process_model(3)
+    model["intent"] = "knowledge_map"
+    relations = (
+        ("n0", "n0", "risk", "long label"),
+        ("n0", "n0", "risk", "long label"),
+        ("n2", "n1", "flow", "link"),
+        ("n1", "n0", "risk", "link"),
+    )
+    model["edges"] = [
+        {"id": f"e{i}", "from": source, "to": target,
+         "kind": kind, "label": label}
+        for i, (source, target, kind, label) in enumerate(relations)
+    ]
+    if reverse_order:
+        model["edges"].reverse()
+    root = _parse(render_native_diagram(model))
+    labels, nodes = _edge_label_boxes(root), _node_boxes(root)
+    for edge_id in ("e0", "e1"):
+        box = labels[edge_id]
+        assert not any(_boxes_overlap(box, b) for b in nodes.values())
+        assert not any(
+            _boxes_overlap(box, b) for other, b in labels.items()
+            if other != edge_id
+        )

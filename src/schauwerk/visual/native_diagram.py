@@ -10918,6 +10918,7 @@ def render_native_diagram(
                 )
             if not blocked_by_peer_label and not blocked_by_card and not ambiguous:
                 continue
+            collision_free_fallback = None
             for trial in _process_near_path_label_boxes(
                 # Small and medium maps can afford a few more candidates
                 # before falling back to the viewer's independent correction.
@@ -10941,12 +10942,19 @@ def render_native_diagram(
                     )
                 ):
                     continue
+                ownership_clear = True
                 if ambiguous:
                     distance = _process_label_path_distance_sq(own_path, trial)
-                    if distance is None or distance > 100**2 or any(
-                        (d := _process_label_path_distance_sq(path, trial)) is None
-                        or math.sqrt(d) <= math.sqrt(distance) + 8
-                        for path in peers
+                    ownership_clear = not (
+                        distance is None or distance > 100**2 or any(
+                            (d := _process_label_path_distance_sq(path, trial)) is None
+                            or math.sqrt(d) <= math.sqrt(distance) + 8
+                            for path in peers
+                        )
+                    )
+                    if not ownership_clear and (
+                        not (blocked_by_peer_label or blocked_by_card)
+                        or collision_free_fallback is not None
                     ):
                         continue
                 fragment = render_planned_edge(
@@ -10980,10 +10988,21 @@ def render_native_diagram(
                     fragment[index] = previous
                     fragment[0] = old_fragment[0]
                     candidate_path = own_path
+                if not ownership_clear:
+                    # Prefer clear ownership, but never let an unattainable
+                    # distance margin prevent a physically safe repair.
+                    collision_free_fallback = fragment, candidate_path, candidate_box
+                    continue
                 planned_edge_lines[edge_id] = fragment
                 label_layout[edge_id] = candidate_path, candidate_box
                 adjusted += 1
                 break
+            else:
+                if collision_free_fallback is not None:
+                    fragment, candidate_path, candidate_box = collision_free_fallback
+                    planned_edge_lines[edge_id] = fragment
+                    label_layout[edge_id] = candidate_path, candidate_box
+                    adjusted += 1
 
         # Shorten genuinely long same-row forward feedback only after
         # the existing layout and label packing have settled. Keep the
