@@ -259,7 +259,10 @@ def _edge_semantics(style: object) -> tuple[str, bool]:
             raise DrawioImportError(
                 f"draw.io {side} marker {marker!r} requires compatibility mode"
             )
-        if marker in {"classic", "classicThin", "block", "blockThin"} and values.get(side + "Fill") == "0":
+        if (
+            marker in {"classic", "classicThin", "block", "blockThin"}
+            and values.get(side + "Fill") == "0"
+        ):
             raise DrawioImportError(
                 f"draw.io hollow {side} marker {marker!r} requires compatibility mode"
             )
