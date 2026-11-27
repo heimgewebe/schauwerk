@@ -130,6 +130,8 @@ def test_drawio_preserves_connector_direction_and_rendered_markers(
         ("endArrow=diamond;", "marker"),
         ("startArrow=oval;endArrow=none;", "marker"),
         ("endArrow=block;endFill=0;", "hollow"),
+        ("endArrow=classic;endFill=0;", "hollow"),
+        ("startArrow=classicThin;startFill=0;endArrow=none;", "hollow"),
         ("unknownNamedStyle;", "named edge style"),
         ("shape=arrow;", "non-connector"),
     ],
