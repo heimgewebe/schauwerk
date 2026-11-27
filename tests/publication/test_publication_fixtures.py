@@ -64,6 +64,11 @@ _HISTORICAL_SOURCE_SHA256 = {
     "tests/visual/test_native_canvas_smart_router.py": (
         "3337ed70d1c1d00f77f8d6e34889631d3dc599a7e0608a54e84f0acddb05e19e"
     ),
+    # Workspace CDP harness: exact pre-audit Git blob at c7184999fa68344926310bb62cbbd0acadfc13e0.
+    # The free-canvas proof remains historical; the current workspace probes run separately.
+    "tests/visual/test_standalone_editor_single_workspace.py": (
+        "a1548242f0b9809c7f5bbc7361dc53c13d6f9f5c16201c4fccbe9afa6f8ee261"
+    ),
     # Follow-up input and process-loop changes: immutable pre-audit Main blobs.
     "src/schauwerk/visual/representation.py": (
         "6e53f09f0c68e25c721203c2a879092a55d6af5920e058015749434dd62716fb"
