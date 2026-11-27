@@ -1427,3 +1427,25 @@ def test_reported_sinn_16_24_has_no_shared_orthogonal_rails() -> None:
         for a, b in combinations(paths, 2)
         if _process_paths_share_physical_stroke(paths[a], paths[b])
     ]
+
+def test_reported_sinn_static_caption_ownership_clears_foreign_rail() -> None:
+    """The short e05 caption must not hide the unrelated e08 vertical rail."""
+    from math import sqrt
+
+    from schauwerk.visual.native_diagram import (
+        _process_label_path_distance_sq,
+        _process_svg_path_hits_box,
+    )
+
+    edges = _edges(ET.fromstring(render_native_diagram(_reported_sinn_16_24_model())))
+    paths = {key: edge.find(SVG + "path").get("d", "") for key, edge in edges.items()}
+    for edge_id, edge in edges.items():
+        rect = edge.find(SVG + "rect")
+        box = tuple(float(rect.attrib[key]) for key in ("x", "y", "width", "height"))
+        own = sqrt(_process_label_path_distance_sq(paths[edge_id], box))
+        assert all(
+            sqrt(_process_label_path_distance_sq(path, box)) > own + 8
+            for other_id, path in paths.items() if other_id != edge_id
+        ), edge_id
+        if edge_id == "e05":
+            assert not _process_svg_path_hits_box(paths["e08"], box)

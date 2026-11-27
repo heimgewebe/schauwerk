@@ -4237,6 +4237,7 @@ def render_native_diagram(
     _process_group_gap_extra: int = 0,
     _knowledge_feedback_footer_ids: frozenset[str] = frozenset(),
     _process_loop_gap_extra: int = 0,
+    _process_uniform_loop_reserve: bool = False,
 ) -> str:
     """Validate representation input and return one deterministic, standalone SVG."""
 
@@ -4324,16 +4325,30 @@ def render_native_diagram(
                             for group_id, label, x, y, region_width, region_height in regions
                         ]
                     height += top_shift
+    local_reserve = False
     if intent == "process" and _process_loop_gap_extra:
         # Only a failed local self-loop plan requests additional real space.
         # Open the existing row gaps and footer before planning any routes.
         row_levels = sorted({y for _, y in positions.values()})
-        row_index = {y: index for index, y in enumerate(row_levels)}
+        loop_rows = {
+            positions[str(edge["from"])][1]
+            for edge in model["edges"]
+            if edge["from"] == edge["to"] and edge["kind"] != "feedback"
+        }
+        # Only a complete mixed plan can authorize nonuniform row spacing.
+        local_reserve = (
+            not _process_uniform_loop_reserve and not regions and bool(loop_rows)
+            and len(loop_rows) < len(row_levels)
+            and any(edge["from"] != edge["to"] for edge in model["edges"])
+        )
+        reserve_rows = sorted(loop_rows) if local_reserve else row_levels
+        row_index = {y: sum(row < y for row in reserve_rows) for y in row_levels}
         positions = {node_id: (x, y + row_index[y] * _process_loop_gap_extra)
                      for node_id, (x, y) in positions.items()}
-        added = len(row_levels) * _process_loop_gap_extra
+        added = len(reserve_rows) * _process_loop_gap_extra
         height += added
-        process_row_gap += _process_loop_gap_extra
+        if not local_reserve:
+            process_row_gap += _process_loop_gap_extra
         regions = [(group_id, label, x, y, rw, rh + added)
                    for group_id, label, x, y, rw, rh in regions]
     # Densely connected knowledge maps need enough room for distinct edge
@@ -11206,6 +11221,15 @@ def render_native_diagram(
                     if a[0] == b[0] and abs(a[1] - b[1]) < 4
                 )
 
+            def ambiguous_label_hit(route, owner, box):
+                own = _process_label_path_distance_sq(owner, box)
+                other = _process_label_path_distance_sq(route, box)
+                return (
+                    own is not None and other is not None
+                    and math.sqrt(other) <= math.sqrt(own) + 8
+                    and _process_svg_path_hits_box(route, box)
+                )
+
             for edge_id, edge in sorted(edge_by_id.items()):
                 source_id, target_id = str(edge["from"]), str(edge["to"])
                 if source_id == target_id:
@@ -11227,7 +11251,11 @@ def render_native_diagram(
                     old_overlap = [shared_length(path, other) for _, other, _ in peers]
                     if any(not math.isfinite(value) for value in old_overlap):
                         break
-                    if max(old_overlap, default=0) < 8:
+                    old_conflicts = [
+                        ambiguous_label_hit(path, other, box)
+                        for _, other, box in peers
+                    ]
+                    if max(old_overlap, default=0) < 8 and not any(old_conflicts):
                         break
                     old_distance = _process_label_path_distance_sq(path, own_box)
                     if old_distance is None:
@@ -11240,9 +11268,17 @@ def render_native_diagram(
                         if abs(first[normal] - last[normal]) < 16:
                             continue
                         stroke = f"M {first[0]} {first[1]} L {last[0]} {last[1]}"
-                        if not any(shared_length(stroke, peer) >= 8 for _, peer, _ in peers):
+                        if not any(
+                            shared_length(stroke, peer) >= 8 for _, peer, _ in peers
+                        ) and not any(
+                            conflict and _process_svg_path_hits_box(stroke, box)
+                            for conflict, (_, _, box) in zip(old_conflicts, peers)
+                        ):
                             continue
-                        for delta in (-12, 12, -16, 16, -24, 24, -32, 32):
+                        deltas = (-12, 12, -16, 16, -24, 24, -32, 32)
+                        if any(old_conflicts):
+                            deltas += (-48, 48, -56, 56)
+                        for delta in deltas:
                             trial = [list(q) for q in points]
                             trial[i][axis] += delta
                             trial[i+1][axis] += delta
@@ -11298,9 +11334,21 @@ def render_native_diagram(
                             if any(not math.isfinite(value) for value in lengths):
                                 continue
                             reduction = sum(old_overlap) - sum(lengths)
-                            if reduction < 8 or any(
-                                b > a + .01 for a, b in zip(old_overlap, lengths)
+                            if any(b > a + .01 for a, b in zip(old_overlap, lengths)):
+                                continue
+                            if any(
+                                not previous and ambiguous_label_hit(proposal, peer, box)
+                                for previous, (_, peer, box) in zip(old_conflicts, peers)
                             ):
+                                continue
+                            label_gain = sum(
+                                previous
+                                and not _process_svg_path_hits_box(proposal, box)
+                                and math.sqrt(_process_label_path_distance_sq(proposal, box))
+                                    > math.sqrt(_process_label_path_distance_sq(peer, box)) + 8
+                                for previous, (_, peer, box) in zip(old_conflicts, peers)
+                            )
+                            if reduction < 8 and not label_gain:
                                 continue
                             length = sum(math.dist(a, b) for a, b in zip(trial, trial[1:]))
                             if length > old_length + 64:
@@ -11349,7 +11397,7 @@ def render_native_diagram(
                                 for _, peer, _ in peers
                             ):
                                 continue
-                            score = (-reduction, length, abs(delta), proposal)
+                            score = (-label_gain, -reduction, length, abs(delta), proposal)
                             if best is None or score < best[0]:
                                 best = (score, proposal)
                     if best is None:
@@ -11503,8 +11551,10 @@ def render_native_diagram(
             return render_native_diagram(
                 value, _process_group_gap_extra=_process_group_gap_extra,
                 _process_loop_gap_extra=max(216, math.ceil(reserve)),
+                _process_uniform_loop_reserve=_process_uniform_loop_reserve,
             )
 
+        complete_mixed_plan = False
         if (
             _process_loop_gap_extra and dense_by_source
             and any(edge["from"] != edge["to"] for edge in paint_edges)
@@ -11539,7 +11589,17 @@ def render_native_diagram(
                 else:
                     planned_edge_lines.update(fragments)
                     compact_process_frame = True
+                    complete_mixed_plan = True
                     ordered_loops = []
+
+        if local_reserve and not complete_mixed_plan:
+            # Keep the previously accepted uniform layout if the complete
+            # reroute cannot be realized. This retry is strictly bounded.
+            return render_native_diagram(
+                value, _process_group_gap_extra=_process_group_gap_extra,
+                _process_loop_gap_extra=_process_loop_gap_extra,
+                _process_uniform_loop_reserve=True,
+            )
 
         unresolved_loop_ids = []
         for edge in ordered_loops:
@@ -11569,6 +11629,7 @@ def render_native_diagram(
             return render_native_diagram(
                 value, _process_group_gap_extra=_process_group_gap_extra,
                 _process_loop_gap_extra=min(216, 64 + 48 * len(unresolved_loop_ids)),
+                _process_uniform_loop_reserve=_process_uniform_loop_reserve,
             )
 
     if compact_process_frame:

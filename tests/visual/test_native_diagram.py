@@ -10382,3 +10382,78 @@ def test_ambiguous_knowledge_map_loops_keep_collision_free_fallback(
             _boxes_overlap(box, b) for other, b in labels.items()
             if other != edge_id
         )
+
+@pytest.mark.parametrize(
+    "node_count,loop_count,peer_count,source_index,height_limit",
+    [(32, 32, 8, 0, 3200), (32, 8, 8, 13, 2200), (14, 8, 13, 7, 1400)],
+)
+def test_dense_process_local_reserve_preserves_unrelated_row_spacing(
+    node_count, loop_count, peer_count, source_index, height_limit
+) -> None:
+    """Dense loops need local room, not repeated empty space in every row."""
+    from schauwerk.visual.native_diagram import _process_paths_share_physical_stroke
+
+    raw = _minimal_process_model(node_count)
+    source = f"n{source_index}"
+    raw["edges"] = [
+        {"id": f"e{i}", "from": source, "to": source,
+         "kind": "risk", "label": "long label"}
+        for i in range(loop_count)
+    ]
+    raw["edges"].extend(
+        {"id": f"e{loop_count + i}", "from": f"n{i}", "to": f"n{i + 1}",
+         "kind": "flow", "label": "link"}
+        for i in range(peer_count)
+    )
+    relations = {edge["id"]: edge for edge in raw["edges"]}
+    root = _parse(render_native_diagram(raw))
+    width, height = map(float, root.attrib["viewBox"].split()[2:])
+    assert height <= height_limit
+    boxes, paths, cards = _edge_label_boxes(root), _edge_paths(root), _node_boxes(root)
+    assert len(set(paths.values())) == len(relations)
+    for edge_id, box in boxes.items():
+        x, y, w, h = box
+        assert 0 <= x <= x + w <= width and 104 <= y <= y + h <= height
+        own = _process_label_path_distance_sq(paths[edge_id], box)
+        assert own is not None
+        edge = relations[edge_id]
+        for card_id, card in cards.items():
+            assert not _boxes_overlap(box, card)
+            if card_id not in {edge["from"], edge["to"]}:
+                assert not _process_svg_path_hits_box(paths[edge_id], card)
+        for other_id, other_box in boxes.items():
+            if other_id != edge_id:
+                assert not _boxes_overlap(box, other_box)
+                assert not _process_svg_path_hits_box(paths[other_id], box)
+                assert not _process_paths_share_physical_stroke(paths[edge_id], paths[other_id])
+                assert _process_label_path_distance_sq(paths[other_id], box) > own
+    raw["edges"].reverse()
+    reverse = _parse(render_native_diagram(raw))
+    assert _edge_paths(reverse) == paths
+    assert _edge_label_boxes(reverse) == boxes
+    assert reverse.attrib["viewBox"] == root.attrib["viewBox"]
+
+
+
+def test_local_loop_reserve_preserves_uniform_layout_when_mixed_plan_fails():
+    import itertools
+    import random
+
+    count, stacks, links = 18, [(0, 8), (13, 8)], 17
+    raw = _minimal_process_model(count)
+    rng = random.Random(count + sum(a + b for a, b in stacks) + links)
+    raw["edges"] = [
+        {"id": f"l{j}_{i}", "from": f"n{node}", "to": f"n{node}",
+         "kind": "risk" if i % 2 else "flow", "label": f"Self loop {i}"}
+        for j, (node, size) in enumerate(stacks) for i in range(size)
+    ]
+    pairs = list(itertools.permutations(range(count), 2))
+    rng.shuffle(pairs)
+    raw["edges"] += [
+        {"id": f"p{i}", "from": f"n{a}", "to": f"n{b}",
+         "kind": "feedback" if i % 5 == 0 else "flow", "label": f"link {i}"}
+        for i, (a, b) in enumerate(pairs[:links])
+    ]
+    assert render_native_diagram(raw) == render_native_diagram(
+        raw, _process_uniform_loop_reserve=True,
+    )
