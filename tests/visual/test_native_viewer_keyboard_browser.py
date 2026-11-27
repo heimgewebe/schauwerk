@@ -268,8 +268,6 @@ def test_keyboard_connection_activation_and_focus_in_chrome(tmp_path: Path, scen
                 })()""".replace("__SOURCE_RELATIONS__", json.dumps(source["edges"]))
                 def check_geometry():
                     result = evaluate(measure)
-                    if scenario == "process-mixed-loop-drag":
-                        print("MIXED_BROWSER_GEOMETRY", json.dumps(result), flush=True)
                     assert len(result) == len(source["edges"]), result
                     assert len({e["path"] for e in result}) == len(source["edges"]), result
                     assert all((e["worldOwn"] <= 1 if e["loop"] else e["worldOwn"] <= 40)
@@ -291,6 +289,16 @@ def test_keyboard_connection_activation_and_focus_in_chrome(tmp_path: Path, scen
                         "button": "none" if kind == "mouseMoved" else "left",
                         "buttons": buttons, "clickCount": 0 if kind == "mouseMoved" else 1,
                     })
+                if scenario == "process-mixed-loop-drag":
+                    # Count native arc-length samples rather than asserting
+                    # machine-dependent wall time. The old planner sampled
+                    # thousands of points per drag; generated M/L/C routes
+                    # now need native samples only for the label midpoint.
+                    evaluate("""(()=>{const w=document.querySelector('#editorFrame').contentWindow;
+                        const proto=w.SVGPathElement.prototype,original=proto.getPointAtLength;
+                        let calls=0;
+                        proto.getPointAtLength=function(...args){calls++;return original.apply(this,args);};
+                        w.__dragGeometryCount=()=>{proto.getPointAtLength=original;return calls;};})()""")
                 mouse("mouseMoved", x, y, 0)
                 mouse("mousePressed", x, y, 1)
                 dx, dy = (12, 0) if scenario == "process-mixed-loop-drag" else (
@@ -301,6 +309,9 @@ def test_keyboard_connection_activation_and_focus_in_chrome(tmp_path: Path, scen
                     time.sleep(0.03)
                 mouse("mouseReleased", x + dx, y + dy, 0)
                 wait(f"{transform} !== {json.dumps(previous_transform)}", "card drag")
+                if scenario == "process-mixed-loop-drag":
+                    calls = evaluate("document.querySelector('#editorFrame').contentWindow.__dragGeometryCount()")
+                    assert calls <= 96, f"Excessive native SVG path sampling during drag: {calls}"
                 after = check_geometry()
                 assert {e["path"] for e in after} != {e["path"] for e in before}
                 return

@@ -1863,19 +1863,70 @@ function refreshProcessLocalSelfLoops() {
     const points = parts.map(part => (part[2].match(/-?(?:\d+(?:\.\d*)?|\.\d+)/g) || []).map(Number));
     return points.every(p => p.length === 2 && p.every(Number.isFinite)) ? points : null;
   };
+  // Generated routes contain absolute M/L/C commands. Flatten their curves
+  // once instead of repeatedly asking the SVG engine for arc-length samples.
+  // Each subdivided cubic's control hull stays within the chord tolerance.
+  const curveTolerance = .2;
+  const flattenCurvePath = path => {
+    if (!/^[MLC0-9+.,\s-]+$/.test(path)) return null;
+    const chunks = [...path.matchAll(/([MLC])\s*([^MLC]*)/g)];
+    if (chunks.length < 2 || chunks.length > 128 || chunks[0][1] !== "M" ||
+        chunks.slice(1).some(part => part[1] === "M")) return null;
+    const values = chunks.map(part =>
+      (part[2].match(/[+-]?(?:\d+(?:\.\d*)?|\.\d+)/g) || []).map(Number));
+    if (!values.every((v,i) => v.length === (chunks[i][1] === "C" ? 6 : 2) &&
+        v.every(Number.isFinite))) return null;
+    const points = [values[0]];
+    const mid = (a,b) => [(a[0]+b[0])/2,(a[1]+b[1])/2];
+    const deviationSq = (p,a,b) => {
+      const dx=b[0]-a[0],dy=b[1]-a[1],d=dx*dx+dy*dy;
+      const t=d ? Math.max(0,Math.min(1,((p[0]-a[0])*dx+(p[1]-a[1])*dy)/d)) : 0;
+      return (p[0]-a[0]-t*dx)**2+(p[1]-a[1]-t*dy)**2;
+    };
+    const append = p => { if (points.length >= 512) return false; points.push(p); return true; };
+    const cubic = (a,b,c,d,depth) => {
+      if (Math.max(deviationSq(b,a,d),deviationSq(c,a,d)) <= curveTolerance**2)
+        return append(d);
+      if (depth >= 10) return false;
+      const ab=mid(a,b),bc=mid(b,c),cd=mid(c,d);
+      const abc=mid(ab,bc),bcd=mid(bc,cd),centre=mid(abc,bcd);
+      return cubic(a,ab,abc,centre,depth+1) && cubic(centre,bcd,cd,d,depth+1);
+    };
+    for (let i=1;i<chunks.length;i++) {
+      const v=values[i];
+      if (chunks[i][1] === "L") {
+        if (!append(v)) return null;
+      } else if (!cubic(points[points.length-1],v.slice(0,2),v.slice(2,4),v.slice(4,6),0)) {
+        return null;
+      }
+    }
+    // Keep a useful label-search density on long straight pieces without
+    // discarding any vertices of the bounded curve approximation.
+    const lengths = points.slice(1).map((p,i) => Math.hypot(p[0]-points[i][0],p[1]-points[i][1]));
+    const spacing = Math.max(6,lengths.reduce((a,b)=>a+b,0)/128);
+    const dense = [points[0]];
+    for (let i=1;i<points.length;i++) {
+      const a=points[i-1],b=points[i],n=Math.max(1,Math.ceil(lengths[i-1]/spacing));
+      for (let j=1;j<=n;j++) dense.push([a[0]+(b[0]-a[0])*j/n,a[1]+(b[1]-a[1])*j/n]);
+    }
+    return dense;
+  };
   const sampledPath = (edge,path) => {
     const linear=pathPoints(path);
-    if (linear) return linear;
+    if (linear) return {points:linear,error:0};
+    const flattened=flattenCurvePath(path);
+    if (flattened) return {points:flattened,error:curveTolerance};
+    // Unrecognized/over-budget geometry retains the previous browser path.
     const old=edge.path.getAttribute("d");
     try {
       edge.path.setAttribute("d",path);
       const length=edge.path.getTotalLength();
       const count=Math.max(2,Math.min(128,Math.ceil(length/6)));
-      return Array.from({length:count+1},(_,i)=>{
+      return {points:Array.from({length:count+1},(_,i)=>{
         const p=edge.path.getPointAtLength(length*i/count);
         return [p.x,p.y];
-      });
-    } catch (_) { return []; }
+      }),error:null};
+    } catch (_) { return {points:[],error:null}; }
     finally { edge.path.setAttribute("d",old||""); }
   };
   const serialize = points => points.map((p, i) =>
@@ -1898,7 +1949,7 @@ function refreshProcessLocalSelfLoops() {
     const w = Number(peer.labelRect?.getAttribute("width") || 0);
     const h = Number(peer.labelRect?.getAttribute("height") || 0);
     if (!w || !h) continue;
-    const points=sampledPath(peer,peer.path.getAttribute("d")||"");
+    const {points}=sampledPath(peer,peer.path.getAttribute("d")||"");
     reserved.push({edge:peer,points,box:labelBox(peer.naturalLabelX,peer.naturalLabelY,w,h)});
   }
   for (const edge of loops) {
@@ -2038,8 +2089,14 @@ function refreshProcessLocalSelfLoops() {
     if (!source || !target) continue;
     const w=Number(edge.labelRect?.getAttribute("width")||0);
     const h=Number(edge.labelRect?.getAttribute("height")||0);
-    const chooseLabel=(path,points,preferred) => {
-      if (!points.length || !knowledgePathAvoidsCards(edge,path) ||
+    const chooseLabel=(path,sample,preferred) => {
+      const {points,error}=sample;
+      // Use the previous two-unit card inset, enlarged by the approximation
+      // error so a curve cannot hide behind its chord.
+      const cardHit = error === null ? !knowledgePathAvoidsCards(edge,path) :
+        bounds.some(([,b])=>pathHits(points,b,error-2));
+      if (points.length < 2 || !points.some((p,i)=>i>0 &&
+          (p[0]!==points[0][0] || p[1]!==points[0][1])) || cardHit ||
           points.some(([x,y])=>x<frame.x+8||y<headerBottom||
             x>frame.x+frame.width-8||y>frame.y+frame.height-8) ||
           [...stackObstacles,...headers].some(b=>pathHits(points,b))) return null;
