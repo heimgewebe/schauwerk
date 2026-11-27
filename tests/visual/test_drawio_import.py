@@ -99,6 +99,10 @@ def test_imports_graph_model_as_valid_native_representation() -> None:
         (";rounded=1;", False, "association"),
         (";defaultEdge;rounded=1;", False, "flow"),
         ("endArrow=classic;endArrow=none;", False, "association"),
+        ("rounded=1; endArrow=none;", False, "association"),
+        ("startArrow = classic ; endArrow = none ;", True, "flow"),
+        (" ; rounded=1; ", False, "association"),
+        (" ; defaultEdge ; rounded=1; ", False, "flow"),
     ],
 )
 def test_drawio_preserves_connector_direction_and_rendered_markers(
@@ -134,6 +138,10 @@ def test_drawio_preserves_connector_direction_and_rendered_markers(
         ("startArrow=classicThin;startFill=0;endArrow=none;", "hollow"),
         ("unknownNamedStyle;", "named edge style"),
         ("shape=arrow;", "non-connector"),
+        ("endArrow=classic; endFill = 0;", "hollow"),
+        ("startArrow=classic; endArrow = classic;", "bidirectional"),
+        ("rounded=1; shape = arrow;", "non-connector"),
+        ("rounded=1; unknownNamedStyle ;", "named edge style"),
     ],
 )
 def test_drawio_rich_arrow_semantics_offer_existing_compatibility_mode(

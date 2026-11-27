@@ -229,11 +229,12 @@ def _node_kind(style: object) -> str:
 
 def _edge_semantics(style: object) -> tuple[str, bool]:
     """Resolve ordinary connector direction without losing richer arrow semantics."""
-    raw = str(style or "")
+    raw = str(style or "").strip()
     # draw.io's defaultEdge stylesheet supplies endArrow=classic, no start
     # marker. A leading semicolon deliberately suppresses stylesheet defaults.
     values = {} if raw.startswith(";") else {"endArrow": "classic"}
-    for token in raw.split(";"):
+    for item in raw.split(";"):
+        token = item.strip()
         if not token:
             continue
         if "=" not in token:
@@ -247,7 +248,7 @@ def _edge_semantics(style: object) -> tuple[str, bool]:
                 f"draw.io named edge style {token!r} requires compatibility mode"
             )
         key, value = token.split("=", 1)
-        values[key] = value
+        values[key.strip()] = value.strip()
     if values.get("shape", "connector") not in {"connector", "none", ""}:
         raise DrawioImportError("draw.io non-connector edge shape requires compatibility mode")
     ordinary = {"classic", "classicThin", "block", "blockThin", "open", "openThin"}
