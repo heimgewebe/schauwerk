@@ -167,6 +167,8 @@ def _normalize_representation_input(
     title = _clean_text(value.get("title"), field="title", maximum=160)
     purpose = _clean_text(value.get("purpose"), field="purpose", maximum=500)
     intent = value.get("intent")
+    if not isinstance(intent, str):
+        raise RepresentationError("intent must be a string")
     if intent not in _SUPPORTED_INTENTS:
         raise RepresentationError(f"intent must be one of {sorted(_SUPPORTED_INTENTS)}")
 
@@ -216,11 +218,15 @@ def _normalize_representation_input(
             raise RepresentationError(f"duplicate node id: {node_id}")
         node_ids.add(node_id)
         kind = raw_node.get("kind")
+        if not isinstance(kind, str):
+            raise RepresentationError(f"nodes[{index}].kind must be a string")
         if kind not in _SUPPORTED_NODE_KINDS:
             raise RepresentationError(
                 f"nodes[{index}].kind must be one of {sorted(_SUPPORTED_NODE_KINDS)}"
             )
         group = raw_node.get("group")
+        if group is not None and not isinstance(group, str):
+            raise RepresentationError(f"nodes[{index}].group must be a string or null")
         if group is not None and group not in group_ids:
             raise RepresentationError(f"nodes[{index}].group references unknown group: {group}")
         summary = raw_node.get("summary", "")
@@ -260,9 +266,15 @@ def _normalize_representation_input(
         edge_ids.add(edge_id)
         source = raw_edge.get("from")
         target = raw_edge.get("to")
+        if not isinstance(source, str):
+            raise RepresentationError(f"edges[{index}].from must be a string")
+        if not isinstance(target, str):
+            raise RepresentationError(f"edges[{index}].to must be a string")
         if source not in node_ids or target not in node_ids:
             raise RepresentationError(f"edges[{index}] references an unknown node")
         kind = raw_edge.get("kind")
+        if not isinstance(kind, str):
+            raise RepresentationError(f"edges[{index}].kind must be a string")
         if kind not in _SUPPORTED_EDGE_KINDS:
             raise RepresentationError(
                 f"edges[{index}].kind must be one of {sorted(_SUPPORTED_EDGE_KINDS)}"

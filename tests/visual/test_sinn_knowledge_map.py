@@ -1010,6 +1010,90 @@ def test_reported_sinn_16_24_hub_has_unique_degree_and_theme_breadth() -> None:
     assert abs(positions["sinn"][0] + 125 - width / 2) < 150
 
 
+def test_unconnected_sources_do_not_move_existing_sinn_nodes_at_compact_boundary() -> None:
+    """Appending a disconnected card must not change the connected graph's layout."""
+    from schauwerk.visual.native_diagram import _layout
+    from schauwerk.visual.representation import validate_representation_input
+
+    model = _reported_sinn_16_24_model()
+    original_ids = {node["id"] for node in model["nodes"]}
+    positions, regions, _, _ = _layout(validate_representation_input(model))
+    baseline = {node_id: positions[node_id] for node_id in original_ids}
+    for index in range(3):
+        model["nodes"].append({
+            "id": f"quelle_extra_{index}", "label": f"Weitere Quelle {index}",
+            "kind": "concept", "group": "quellen",
+        })
+        positions, current_regions, _, _ = _layout(validate_representation_input(model))
+        assert {node_id: positions[node_id] for node_id in original_ids} == baseline
+        assert [r[:2] for r in current_regions] == [r[:2] for r in regions]
+    assert len(model["nodes"]) == 19
+    root = ET.fromstring(render_native_diagram(model))
+    assert not any(e.get("data-renderer-region") == "ungrouped" for e in root.iter())
+
+
+def test_audit_minimal_knowledge_map_raw_svg_has_no_overlapping_labels() -> None:
+    """Original 23 November audit reproduction: e12 and e21 overlapped by 1976."""
+    from schauwerk.visual.native_diagram import (
+        _process_label_path_distance_sq,
+        _process_svg_path_hits_box,
+    )
+
+    model = {
+        "schema_version": "schauwerk-representation-input.v1",
+        "id": "audit_routing", "title": "Audit Kanten",
+        "purpose": "Prüfung zulässiger Kantenkonstellationen", "intent": "knowledge_map",
+        "groups": [{"id": f"g{i}", "label": f"Thema {i}"} for i in range(4)],
+        "nodes": [
+            {"id": f"n{i}", "label": f"Begriff {i}", "kind": "concept", "group": f"g{i%4}"}
+            for i in (0, 1, 2, 3, 5, 6, 7, 9, 10, 11, 14, 15)
+        ],
+        "edges": [
+            {"id": f"e{i}", "from": f"n{a}", "to": f"n{b}",
+             "label": f"Bezug {i}", "kind": kind}
+            for i, a, b, kind in [
+                (1, 14, 7, "risk"), (2, 0, 15, "feedback"),
+                (3, 1, 9, "association"), (4, 1, 7, "association"),
+                (6, 14, 3, "risk"), (12, 5, 3, "flow"),
+                (14, 10, 5, "association"), (15, 3, 10, "flow"),
+                (17, 0, 10, "flow"), (18, 9, 14, "flow"),
+                (19, 11, 9, "feedback"), (20, 2, 11, "flow"),
+                (21, 7, 5, "risk"), (23, 6, 11, "feedback"),
+            ]
+        ],
+        "requirements": {}, "requested_formats": [],
+    }
+    svg = render_native_diagram(model)
+    root = ET.fromstring(svg)
+    edges = _edges(root)
+
+    def box(element):
+        rect = element.find(SVG + "rect")
+        return tuple(float(rect.get(key)) for key in ("x", "y", "width", "height"))
+
+    labels = {key: box(value) for key, value in edges.items()}
+    paths = {key: value.find(SVG + "path").get("d") for key, value in edges.items()}
+    cards = [box(e) for e in root.iter() if e.get("data-source-kind") == "node"]
+    def overlap(a, b):
+        return (a[0] < b[0] + b[2] and b[0] < a[0] + a[2]
+                and a[1] < b[1] + b[3] and b[1] < a[1] + a[3])
+
+    assert len(labels) == 14
+    for edge_id, bounds in labels.items():
+        assert not any(overlap(bounds, other) for key, other in labels.items() if key != edge_id)
+        assert not any(overlap(bounds, card) for card in cards)
+    for edge_id in ("e12", "e21"):
+        assert _process_label_path_distance_sq(paths[edge_id], labels[edge_id]) <= 320**2
+    # Only the actually relocated label needs the full collision assertion;
+    # the pre-existing peer label must not be displaced by a second pass.
+    assert any(
+        all(not _process_svg_path_hits_box(path, labels[edge_id])
+            for key, path in paths.items() if key != edge_id)
+        for edge_id in ("e12", "e21")
+    )
+    assert svg == render_native_diagram(copy.deepcopy(model))
+
+
 def test_reported_sinn_16_24_central_render_has_no_foreign_card_or_label_hits() -> None:
     """A central hub is useful only if all paths and captions remain readable."""
     from math import dist
@@ -1081,6 +1165,30 @@ def test_reported_sinn_16_24_central_render_has_no_foreign_card_or_label_hits() 
         for segment in segments for start, end in zip(segment, segment[1:])
     ) < 1550
     assert content == render_native_diagram(copy.deepcopy(source))
+
+
+def test_reported_sinn_16_24_clears_recoverable_ambiguous_labels() -> None:
+    """Label rescue must distinguish its own line from the nearby foreign stroke."""
+    from math import sqrt
+
+    from schauwerk.visual.native_diagram import (
+        _process_label_path_distance_sq,
+        _process_svg_path_hits_box,
+    )
+
+    root = ET.fromstring(render_native_diagram(_reported_sinn_16_24_model()))
+    edges = _edges(root)
+    paths = {key: value.find(SVG + "path").get("d", "") for key, value in edges.items()}
+    for edge_id in ("e06", "e10", "e15", "e21"):
+        rect = edges[edge_id].find(SVG + "rect")
+        assert rect is not None
+        box = tuple(float(rect.get(key, "0")) for key in ("x", "y", "width", "height"))
+        own = sqrt(_process_label_path_distance_sq(paths[edge_id], box))
+        assert own <= 100
+        for other_id, path in paths.items():
+            if other_id != edge_id:
+                assert not _process_svg_path_hits_box(path, box)
+                assert sqrt(_process_label_path_distance_sq(path, box)) > own + 8
 
 
 def test_reported_sinn_16_24_equal_degree_is_not_forced_into_the_center() -> None:
@@ -1234,3 +1342,110 @@ def test_reported_sinn_16_24_layout_reduces_crossings_without_inventing_group() 
         if len({first["from"], first["to"], second["from"], second["to"]}) == 4
     )
     assert routed_crossings <= 25, routed_crossings
+
+
+def test_reported_sinn_long_forward_feedback_uses_clear_local_corridor() -> None:
+    """A long same-row return should not traverse the entire card field."""
+    from math import dist
+
+    from schauwerk.visual.native_diagram import (
+        _process_svg_path_hits_box,
+        _process_svg_stroke_segments,
+    )
+
+    root = ET.fromstring(render_native_diagram(_reported_sinn_16_24_model()))
+    edges = _edges(root)
+    path = edges["e11"].find(SVG + "path")
+    assert path is not None
+    d = path.get("d", "")
+    segments = _process_svg_stroke_segments(d)
+    length = sum(dist(a, b) for seg in segments for a, b in zip(seg, seg[1:]))
+    assert length < 1000
+    for edge_id, edge in edges.items():
+        if edge_id == "e11":
+            continue
+        rect = edge.find(SVG + "rect")
+        assert rect is not None
+        box = tuple(float(rect.get(key, "0")) for key in ("x", "y", "width", "height"))
+        assert not _process_svg_path_hits_box(d, box)
+
+def test_reported_sinn_16_24_separates_coincident_destination_ports() -> None:
+    """Distinct incoming relationships must remain individually traceable."""
+    from math import dist
+
+    from schauwerk.visual.native_diagram import _process_svg_stroke_segments
+
+    source = _reported_sinn_16_24_model()
+    edges = _edges(ET.fromstring(render_native_diagram(source)))
+    ports = {}
+    for relation in source["edges"]:
+        path = edges[relation["id"]].find(SVG + "path")
+        assert path is not None
+        segments = _process_svg_stroke_segments(path.get("d", ""))
+        assert segments
+        ports.setdefault(relation["to"], []).append(
+            (relation["id"], segments[-1][-1])
+        )
+    for incoming in ports.values():
+        for index, (edge_id, port) in enumerate(incoming):
+            for other_id, other_port in incoming[index + 1:]:
+                assert dist(port, other_port) >= 2, (edge_id, other_id, port)
+
+
+def test_reported_sinn_destination_port_repair_preserves_caption_association() -> None:
+    """Separating ports must not move a short stroke away from its own caption."""
+    from schauwerk.visual.native_diagram import _process_label_path_distance_sq
+
+    root = ET.fromstring(render_native_diagram(_reported_sinn_16_24_model()))
+    edges = _edges(root)
+    paths = {key: edge.find(SVG + "path").get("d", "") for key, edge in edges.items()}
+    for edge_id, edge in edges.items():
+        rect = edge.find(SVG + "rect")
+        assert rect is not None
+        box = tuple(float(rect.get(key, "0")) for key in ("x", "y", "width", "height"))
+        own = _process_label_path_distance_sq(paths[edge_id], box)
+        assert own is not None
+        for other_id, path in paths.items():
+            if other_id != edge_id:
+                peer = _process_label_path_distance_sq(path, box)
+                assert peer is not None and own <= peer + 1e-6, (edge_id, other_id)
+
+def test_reported_sinn_16_24_has_no_shared_orthogonal_rails() -> None:
+    """Distinct relations may cross but must not run on the same rail."""
+    from itertools import combinations
+
+    from schauwerk.visual.native_diagram import _process_paths_share_physical_stroke
+
+    root = ET.fromstring(render_native_diagram(_reported_sinn_16_24_model()))
+    paths = {
+        edge_id: edge.find(SVG + "path").get("d", "")
+        for edge_id, edge in _edges(root).items()
+    }
+    assert len(paths) == 24
+    assert not [
+        (a, b)
+        for a, b in combinations(paths, 2)
+        if _process_paths_share_physical_stroke(paths[a], paths[b])
+    ]
+
+def test_reported_sinn_static_caption_ownership_clears_foreign_rail() -> None:
+    """The short e05 caption must not hide the unrelated e08 vertical rail."""
+    from math import sqrt
+
+    from schauwerk.visual.native_diagram import (
+        _process_label_path_distance_sq,
+        _process_svg_path_hits_box,
+    )
+
+    edges = _edges(ET.fromstring(render_native_diagram(_reported_sinn_16_24_model())))
+    paths = {key: edge.find(SVG + "path").get("d", "") for key, edge in edges.items()}
+    for edge_id, edge in edges.items():
+        rect = edge.find(SVG + "rect")
+        box = tuple(float(rect.attrib[key]) for key in ("x", "y", "width", "height"))
+        own = sqrt(_process_label_path_distance_sq(paths[edge_id], box))
+        assert all(
+            sqrt(_process_label_path_distance_sq(path, box)) > own + 8
+            for other_id, path in paths.items() if other_id != edge_id
+        ), edge_id
+        if edge_id == "e05":
+            assert not _process_svg_path_hits_box(paths["e08"], box)

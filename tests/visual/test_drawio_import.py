@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import base64
 import urllib.parse
+import xml.etree.ElementTree as ET
 import zlib
 
 import pytest
@@ -11,6 +12,7 @@ from schauwerk.visual.drawio_import import (
     DrawioImportError,
     drawio_xml_to_representation,
 )
+from schauwerk.visual.native_diagram import render_native_diagram
 from schauwerk.visual.representation import validate_representation_input
 
 MODEL = """<mxGraphModel><root>
@@ -79,6 +81,75 @@ def test_imports_graph_model_as_valid_native_representation() -> None:
     assert len(normalized["edges"]) == 1
     assert normalized["edges"][0]["label"] == "verfügt über"
     assert normalized["edges"][0]["kind"] == "flow"
+
+
+@pytest.mark.parametrize(
+    ("style", "reverse", "kind"),
+    [
+        ("", False, "flow"),
+        ("edgeStyle=orthogonalEdgeStyle;", False, "flow"),
+        ("endArrow=classic;", False, "flow"),
+        ("endArrow=blockThin;", False, "flow"),
+        ("endArrow=openThin;", False, "flow"),
+        ("startArrow=classic;endArrow=none;", True, "flow"),
+        ("startArrow=open;endArrow=none;", True, "flow"),
+        ("startArrow=block;endArrow=;", True, "flow"),
+        ("endArrow=none;", False, "association"),
+        ("startArrow=none;endArrow=none;", False, "association"),
+        (";rounded=1;", False, "association"),
+        (";defaultEdge;rounded=1;", False, "flow"),
+        ("endArrow=classic;endArrow=none;", False, "association"),
+        ("rounded=1; endArrow=none;", False, "association"),
+        ("startArrow = classic ; endArrow = none ;", True, "flow"),
+        (" ; rounded=1; ", False, "association"),
+        (" ; defaultEdge ; rounded=1; ", False, "flow"),
+    ],
+)
+def test_drawio_preserves_connector_direction_and_rendered_markers(
+    style: str, reverse: bool, kind: str,
+) -> None:
+    source = MODEL.replace("edgeStyle=orthogonalEdgeStyle;endArrow=classic;", style)
+    model = validate_representation_input(drawio_xml_to_representation(source))
+    first, second = [node["id"] for node in model["nodes"]]
+    edge = model["edges"][0]
+    assert (edge["from"], edge["to"]) == ((second, first) if reverse else (first, second))
+    assert edge["kind"] == kind
+    assert edge["label"] == "verfügt über"
+    svg = ET.fromstring(render_native_diagram(model))
+    group = next(e for e in svg.iter() if e.get("data-source-kind") == "edge")
+    path = group.find("{http://www.w3.org/2000/svg}path")
+    assert path is not None
+    assert group.get("data-source-id") == edge["id"]
+    assert path.get("marker-start") is None
+    assert path.get("marker-end") == (
+        "url(#native-arrow-flow)" if kind == "flow" else None
+    )
+
+
+@pytest.mark.parametrize(
+    ("style", "reason"),
+    [
+        ("startArrow=classic;endArrow=classic;", "bidirectional"),
+        ("startArrow=classic;", "bidirectional"),
+        ("endArrow=diamond;", "marker"),
+        ("startArrow=oval;endArrow=none;", "marker"),
+        ("endArrow=block;endFill=0;", "hollow"),
+        ("endArrow=classic;endFill=0;", "hollow"),
+        ("startArrow=classicThin;startFill=0;endArrow=none;", "hollow"),
+        ("unknownNamedStyle;", "named edge style"),
+        ("shape=arrow;", "non-connector"),
+        ("endArrow=classic; endFill = 0;", "hollow"),
+        ("startArrow=classic; endArrow = classic;", "bidirectional"),
+        ("rounded=1; shape = arrow;", "non-connector"),
+        ("rounded=1; unknownNamedStyle ;", "named edge style"),
+    ],
+)
+def test_drawio_rich_arrow_semantics_offer_existing_compatibility_mode(
+    style: str, reason: str,
+) -> None:
+    source = MODEL.replace("edgeStyle=orthogonalEdgeStyle;endArrow=classic;", style)
+    with pytest.raises(DrawioImportError, match=reason + ".*compatibility mode"):
+        drawio_xml_to_representation(source)
 
 
 def test_imports_uncompressed_single_page_mxfile() -> None:

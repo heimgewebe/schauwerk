@@ -509,6 +509,21 @@ def _grouped_process_layout(
     return positions, regions, width, height
 
 
+def _knowledge_map_compact_layout(
+    node_count: int, edges: Sequence[Mapping[str, Any]],
+) -> bool:
+    """Bound the richer layout by relation topology, not appended isolated cards."""
+    connected = {
+        str(edge[endpoint])
+        for edge in edges
+        if edge["from"] != edge["to"]
+        for endpoint in ("from", "to")
+    }
+    # The existing hub finder is capped at 32 cards. Retain a hard total
+    # complexity bound even when most cards are disconnected.
+    return node_count <= 32 and len(connected) <= _KNOWLEDGE_MAP_COMPACT_NODE_LIMIT
+
+
 def _knowledge_map_ordered_columns(
     columns: list[tuple[str | None, str, list[Mapping[str, Any]]]],
     edges: Sequence[Mapping[str, Any]],
@@ -526,7 +541,7 @@ def _knowledge_map_ordered_columns(
     # Small-map optimization is deliberately bounded by both work and
     # previously accepted larger knowledge-map render revisions.
     compact_proxy = (
-        sum(map(len, order)) <= _KNOWLEDGE_MAP_COMPACT_NODE_LIMIT
+        _knowledge_map_compact_layout(sum(map(len, order)), edges)
         and len(edges) <= 64 and len(columns) <= 6
         and max(map(len, order)) <= 8
     )
@@ -919,7 +934,7 @@ def _layout(
             row_count = max(1, len(column_nodes))
             centered_hub = (
                 model["intent"] == "knowledge_map"
-                and len(nodes) <= _KNOWLEDGE_MAP_COMPACT_NODE_LIMIT
+                and _knowledge_map_compact_layout(len(nodes), model["edges"])
                 and group_id is None and label == "Leitbegriff"
                 and row_count == 1 and maximum_rows >= 3
             )
@@ -2304,6 +2319,322 @@ def _process_svg_path_hits_box(
     return False
 
 
+def _process_dense_loop_stack(
+    source: tuple[int, int],
+    items: Sequence[tuple[str, tuple[float, float, float, float]]],
+    *,
+    canvas_width: int,
+    canvas_height: int,
+    card_boxes: Sequence[tuple[float, float, float, float]],
+    header_boxes: Sequence[tuple[float, float, float, float]],
+    peers: Sequence[tuple[str, tuple[float, float, float, float]]],
+) -> dict[str, tuple[str, float, float]] | None:
+    """Pack a dense stack together, instead of reserving its obsolete arcs.
+
+    Nested bottom rails have separate ports, outer legs and label-bearing
+    crossbars. The short flared stubs separate port width from label width;
+    a wide caption no longer consumes all the card's remaining ports.
+    """
+    x, y = source
+    count = len(items)
+    base = y + _NODE_HEIGHT
+    max_width = max(box[2] for _, box in items)
+    max_half = max_width / 2 + 12 + 6 * (count - 1)
+    centre = min(canvas_width - max_half - 8, max(max_half + 8, x + _NODE_WIDTH / 2))
+    if centre - max_half < 8 or centre + max_half > canvas_width - 8:
+        return None
+    stub = base + 12
+    rail = stub + 8
+    plans: dict[str, tuple[str, float, float]] = {}
+    occupied = list(peers)
+
+    def overlap(a: tuple[float, float, float, float],
+                b: tuple[float, float, float, float]) -> bool:
+        return (a[0] < b[0] + b[2] + 2 and b[0] < a[0] + a[2] + 2
+                and a[1] < b[1] + b[3] + 2 and b[1] < a[1] + a[3] + 2)
+
+    for i, (edge_id, old_box) in enumerate(items):
+        _, _, lw, lh = old_box
+        rail += lh / 2 + 6
+        if rail + lh / 2 > canvas_height - 8:
+            return None
+        span = max_width / 2 + 12 + i * 6
+        port_half = 12 + i * min(8, (_NODE_WIDTH / 2 - 20) / max(1, count - 1))
+        a = x + _NODE_WIDTH / 2 - port_half
+        b = x + _NODE_WIDTH / 2 + port_half
+        points = (
+            (a, base), (centre - span, stub), (centre - span, rail),
+            (centre + span, rail), (centre + span, stub), (b, base),
+        )
+        path = " ".join(
+            f"{'M' if j == 0 else 'L'} {px:.1f} {py:.1f}"
+            for j, (px, py) in enumerate(points)
+        )
+        box = (round(centre - lw / 2, 1), round(rail - lh / 2, 1), lw, lh)
+        if any(
+            overlap(box, other)
+            or (other[:2] != source and _process_svg_path_hits_box(path, other, padding=0))
+            for other in (*card_boxes, *header_boxes)
+        ):
+            return None
+        if any(
+            overlap(box, other) or _process_svg_path_hits_box(path, other)
+            or _process_svg_path_hits_box(peer, box)
+            or _process_paths_share_physical_stroke(path, peer)
+            for peer, other in occupied
+        ):
+            return None
+        if any(
+            (old_distance := _process_label_path_distance_sq(peer, other)) is not None
+            and old_distance <= 140**2
+            and (new_distance := _process_label_path_distance_sq(path, other)) is not None
+            and new_distance <= old_distance
+            for peer, other in occupied
+        ):
+            return None
+        plans[edge_id] = path, centre, rail
+        occupied.append((path, box))
+        rail += lh / 2 + 6
+    return plans
+
+
+def _process_mixed_dense_plan(
+    positions: Mapping[str, tuple[int, int]],
+    edges: Sequence[Mapping[str, Any]],
+    layout: Mapping[str, tuple[str, tuple[float, float, float, float]]],
+    stacks: Mapping[str, Sequence[Mapping[str, Any]]],
+    *,
+    canvas_width: int,
+    canvas_height: int,
+    card_boxes: Sequence[tuple[float, float, float, float]],
+    header_boxes: Sequence[tuple[float, float, float, float]],
+) -> dict[str, tuple[str, float, float]] | None:
+    """Reserve dense loop envelopes, then route other relations around them.
+
+    This is a bounded fallback for an actual dense mixed process layout
+    which already needed extra row space. Reuse the canvas obstacle router;
+    publish only an entire collision-checked plan, never partially adopt it.
+    """
+    if len(positions) > 32 or len(edges) > 40:
+        return None
+    dense_ids = {str(edge["id"]) for stack in stacks.values() for edge in stack}
+    result: dict[str, tuple[str, float, float]] = {}
+    occupied: dict[str, tuple[str, tuple[float, float, float, float]]] = {}
+    nodes = [
+        dict(id=node_id, type="node", x=x, y=y, width=_NODE_WIDTH, height=_NODE_HEIGHT)
+        for node_id, (x, y) in positions.items()
+    ]
+    node_by_id = {node["id"]: node for node in nodes}
+
+    def overlaps(a: tuple[float, float, float, float],
+                 b: tuple[float, float, float, float]) -> bool:
+        return (a[0] < b[0] + b[2] + 2 and b[0] < a[0] + a[2] + 2
+                and a[1] < b[1] + b[3] + 2 and b[1] < a[1] + a[3] + 2)
+
+    for source_id, stack in sorted(stacks.items()):
+        plan = _process_dense_loop_stack(
+            positions[source_id],
+            [(str(edge["id"]), layout[str(edge["id"])][1]) for edge in stack],
+            canvas_width=canvas_width, canvas_height=canvas_height,
+            card_boxes=card_boxes, header_boxes=header_boxes,
+            peers=list(occupied.values()),
+        )
+        if plan is None:
+            return None
+        extent: list[tuple[float, float]] = []
+        for edge_id, (path, cx, cy) in plan.items():
+            lw, lh = layout[edge_id][1][2:]
+            box = (round(cx-lw/2, 1), round(cy-lh/2, 1), lw, lh)
+            occupied[edge_id] = path, box
+            result[edge_id] = path, cx, cy
+            segments = _process_svg_stroke_segments(path)
+            if not segments:
+                return None
+            extent.extend(point for segment in segments for point in segment)
+            extent.extend(((box[0], box[1]), (box[0]+lw, box[1]+lh)))
+        xs, ys = zip(*extent)
+        # The stack starts at the source's lower boundary. Treat the whole
+        # envelope as an obstacle, including its outermost label.
+        nodes.append(dict(
+            id="__stack_" + source_id, type="node", x=min(xs), y=min(ys)+.1,
+            width=max(xs)-min(xs), height=max(ys)-min(ys)-.1,
+        ))
+
+    nodes.extend(
+        dict(id=f"__header_{i}", type="node", x=x, y=y, width=w, height=h)
+        for i, (x, y, w, h) in enumerate(header_boxes)
+    )
+    prior: list[dict[str, Any]] = []
+    sides = ("left", "right", "top", "bottom")
+    ports = [(None, None), *((a, b) for a in sides for b in sides)]
+    for edge in sorted(
+        (edge for edge in edges if str(edge["id"]) not in dense_ids),
+        key=_process_anchor_order_key,
+    ):
+        edge_id = str(edge["id"])
+        source_id, target_id = str(edge["from"]), str(edge["to"])
+        lw, lh = layout[edge_id][1][2:]
+        chosen = None
+        for from_side, to_side in ports:
+            candidate = _canvas_smart_route_edge(
+                node_by_id[source_id], node_by_id[target_id], nodes,
+                from_side=from_side, to_side=to_side, clearance=8,
+                prior_routes=prior[-12:],
+            )
+            if candidate is None:
+                continue
+            path = candidate.path
+            xmin, ymin, xmax, ymax = candidate.bounds
+            if xmin < 8 or ymin < 104 or xmax > canvas_width-8 or ymax > canvas_height-8:
+                continue
+            if any(
+                _process_svg_path_hits_box(path, box)
+                or _process_paths_share_physical_stroke(path, peer)
+                or (
+                    (own := _process_label_path_distance_sq(peer, box)) is not None
+                    and (new := _process_label_path_distance_sq(path, box)) is not None
+                    and new <= own
+                )
+                for peer, box in occupied.values()
+            ):
+                continue
+            preferred = (candidate.label_x-lw/2, candidate.label_y-lh/2, lw, lh)
+            centres = [preferred]
+            for a, b in _process_sampled_svg_lines(path) or ():
+                for fraction in (.25, .5, .75):
+                    centres.append((
+                        a[0]+fraction*(b[0]-a[0])-lw/2,
+                        a[1]+fraction*(b[1]-a[1])-lh/2, lw, lh,
+                    ))
+            centres.sort(key=lambda box: (
+                abs(box[0]-preferred[0])+abs(box[1]-preferred[1]), box[0], box[1],
+            ))
+            for trial in (*centres, *_process_near_path_label_boxes(path, preferred, limit=512)):
+                x, y, w, h = trial
+                box = (round(x, 1), round(y, 1), w, h)
+                if x < 8 or y < 104 or x+w > canvas_width-8 or y+h > canvas_height-8:
+                    continue
+                if any(overlaps(box, other) for other in (*card_boxes, *header_boxes)):
+                    continue
+                if any(
+                    overlaps(box, other) or _process_svg_path_hits_box(peer, box)
+                    for peer, other in occupied.values()
+                ):
+                    continue
+                distance = _process_label_path_distance_sq(path, box)
+                if distance is None or distance > 40**2:
+                    continue
+                if any(
+                    (peer_distance := _process_label_path_distance_sq(peer, box)) is None
+                    or peer_distance <= distance
+                    for peer, _ in occupied.values()
+                ):
+                    continue
+                chosen = candidate, box
+                break
+            if chosen is not None:
+                break
+        if chosen is None:
+            return None
+        candidate, box = chosen
+        result[edge_id] = candidate.path, box[0]+lw/2, box[1]+lh/2
+        occupied[edge_id] = candidate.path, box
+        prior.append({"from": source_id, "to": target_id, "points": candidate.points})
+        nodes.append(dict(
+            id="__label_"+edge_id, type="node", x=box[0], y=box[1], width=lw, height=lh,
+        ))
+    return result
+
+
+def _process_local_self_loop_plan(
+    source: tuple[int, int],
+    own_box: tuple[float, float, float, float],
+    *,
+    canvas_width: int,
+    canvas_height: int,
+    card_boxes: Sequence[tuple[float, float, float, float]],
+    header_boxes: Sequence[tuple[float, float, float, float]],
+    peers: Sequence[tuple[str, tuple[float, float, float, float]]],
+) -> tuple[str, float, float] | None:
+    """A local loop with a label on its own rail, using only verified free space."""
+    x, y = source
+    _, _, lw, lh = own_box
+    obstacles = (*card_boxes, *header_boxes)
+
+    def overlap(a: tuple[float, float, float, float],
+                b: tuple[float, float, float, float]) -> bool:
+        return (a[0] < b[0] + b[2] + 2 and b[0] < a[0] + a[2] + 2
+                and a[1] < b[1] + b[3] + 2 and b[1] < a[1] + a[3] + 2)
+
+    best = None
+    for side in ("bottom", "right", "top", "left"):
+        horizontal = side in {"top", "bottom"}
+        dimension = _NODE_WIDTH if horizontal else _NODE_HEIGHT
+        label_along = lw if horizontal else lh
+        label_across = lh if horizontal else lw
+        direction = 1 if side in {"bottom", "right"} else -1
+        base = (
+            y + _NODE_HEIGHT if side == "bottom" else y if side == "top"
+            else x + _NODE_WIDTH if side == "right" else x
+        )
+        origin = x if horizontal else y
+        # Leave a visible stroke on each side of the label. In narrow gaps
+        # keep the connection compact, with at least 8 units to each box.
+        for shift in (0, -24, 24, -48, 48, -72, 72):
+            for extra in (0, 12, 24, 40, 64, 88, 116, 148, 184):
+                # Outer nested loops use wider ports so the inner label and
+                # the outgoing/return legs retain their own visible strokes.
+                half_span = min(dimension / 2 - 8, label_along / 2 + 14 + extra / 5)
+                centre = max(half_span + 6, min(
+                    dimension - half_span - 6, dimension / 2 + shift
+                ))
+                reach = label_across / 2 + 8 + extra
+                rail = base + direction * reach
+                cx, cy = (origin + centre, rail) if horizontal else (rail, origin + centre)
+                box = (round(cx - lw / 2, 1), round(cy - lh / 2, 1), lw, lh)
+                if (box[0] < 8 or box[0] + lw > canvas_width - 8
+                        or box[1] < 104 or box[1] + lh > canvas_height - 8
+                        or any(overlap(box, other) for other in obstacles)
+                        or any(overlap(box, other) for _, other in peers)
+                        or any(_process_svg_path_hits_box(path, box) for path, _ in peers)):
+                    continue
+                lo, hi = origin + centre - half_span, origin + centre + half_span
+                points = ((lo, base), (lo, rail), (hi, rail), (hi, base)) if horizontal else (
+                    (base, lo), (rail, lo), (rail, hi), (base, hi)
+                )
+                path = " ".join(
+                    f"{'M' if i == 0 else 'L'} {px:.1f} {py:.1f}"
+                    for i, (px, py) in enumerate(points)
+                )
+                # The two endpoints intentionally touch the source card.
+                if any(_process_svg_path_hits_box(path, other, padding=0)
+                       for other in obstacles
+                       if other[:2] != source):
+                    continue
+                if any(
+                    _process_svg_path_hits_box(path, other)
+                    or _process_paths_share_physical_stroke(path, peer_path)
+                    for peer_path, other in peers
+                ):
+                    continue
+                # Never steal the meaning of an already well-associated label.
+                if any(
+                    (old_distance := _process_label_path_distance_sq(peer_path, other)) is not None
+                    and old_distance <= 140.0**2
+                    and (new_distance := _process_label_path_distance_sq(path, other)) is not None
+                    and new_distance <= old_distance
+                    for peer_path, other in peers
+                ):
+                    continue
+                distance = _process_label_path_distance_sq(path, box)
+                if distance is None or distance > 1.0:
+                    continue
+                score = (reach, abs(centre - dimension / 2), side)
+                if best is None or score < best[0]:
+                    best = (score, path, cx, cy)
+    return None if best is None else best[1:]
+
+
 def _knowledge_map_long_diagonal_gutter(
     source: tuple[int, int],
     target: tuple[int, int],
@@ -3374,6 +3705,8 @@ def _render_edge(
     feedback_outer_obstacles: Sequence[tuple[float, float, float, float]] = (),
     final_label_override: tuple[float, float] | None = None,
     process_row_card_side_path: str | None = None,
+    process_local_self_loop_path: str | None = None,
+    mixed_process_path: str | None = None,
 ) -> list[str]:
     kind = str(edge["kind"])
     color, dash, width = _EDGE_STYLE[kind]
@@ -3503,6 +3836,16 @@ def _render_edge(
             raise ValueError("invalid process card side-port detour")
         path = process_row_card_side_path
         route = "process-row-card-side-detour"
+    if process_local_self_loop_path is not None:
+        if intent != "process" or kind == "feedback" or edge["from"] != edge["to"]:
+            raise ValueError("invalid local process self-loop route")
+        path = process_local_self_loop_path
+        route = "process-local-self-loop"
+    if mixed_process_path is not None:
+        if intent != "process":
+            raise ValueError("invalid mixed process route")
+        path = mixed_process_path
+        route = "process-mixed-card-safe"
     if long_vertical_label_x is not None and route == "vertical":
         label_x = long_vertical_label_x
     dash_attribute = f' stroke-dasharray="{dash}"' if dash else ""
@@ -3893,6 +4236,8 @@ def render_native_diagram(
     *,
     _process_group_gap_extra: int = 0,
     _knowledge_feedback_footer_ids: frozenset[str] = frozenset(),
+    _process_loop_gap_extra: int = 0,
+    _process_uniform_loop_reserve: bool = False,
 ) -> str:
     """Validate representation input and return one deterministic, standalone SVG."""
 
@@ -3980,6 +4325,32 @@ def render_native_diagram(
                             for group_id, label, x, y, region_width, region_height in regions
                         ]
                     height += top_shift
+    local_reserve = False
+    if intent == "process" and _process_loop_gap_extra:
+        # Only a failed local self-loop plan requests additional real space.
+        # Open the existing row gaps and footer before planning any routes.
+        row_levels = sorted({y for _, y in positions.values()})
+        loop_rows = {
+            positions[str(edge["from"])][1]
+            for edge in model["edges"]
+            if edge["from"] == edge["to"] and edge["kind"] != "feedback"
+        }
+        # Only a complete mixed plan can authorize nonuniform row spacing.
+        local_reserve = (
+            not _process_uniform_loop_reserve and not regions and bool(loop_rows)
+            and len(loop_rows) < len(row_levels)
+            and any(edge["from"] != edge["to"] for edge in model["edges"])
+        )
+        reserve_rows = sorted(loop_rows) if local_reserve else row_levels
+        row_index = {y: sum(row < y for row in reserve_rows) for y in row_levels}
+        positions = {node_id: (x, y + row_index[y] * _process_loop_gap_extra)
+                     for node_id, (x, y) in positions.items()}
+        added = len(reserve_rows) * _process_loop_gap_extra
+        height += added
+        if not local_reserve:
+            process_row_gap += _process_loop_gap_extra
+        regions = [(group_id, label, x, y, rw, rh + added)
+                   for group_id, label, x, y, rw, rh in regions]
     # Densely connected knowledge maps need enough room for distinct edge
     # labels in a row gap. Only expand diagrams containing multiple actual
     # cross-card same-row detours; existing Goldens retain their geometry.
@@ -7732,7 +8103,8 @@ def render_native_diagram(
                 )
                 if next_gap <= clearance_budget:
                     return render_native_diagram(
-                        value, _process_group_gap_extra=next_gap
+                        value, _process_group_gap_extra=next_gap,
+                        _process_loop_gap_extra=_process_loop_gap_extra,
                     )
             # Never silently reuse a route through a card or relation label.
             raise ValueError("no collision-free process feedback side-port route")
@@ -7754,69 +8126,76 @@ def render_native_diagram(
     )
     title_clip_id = "native-clip-title"
     purpose_clip_id = "native-clip-purpose"
-    lines = [
-        '<?xml version="1.0" encoding="UTF-8"?>',
-        f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {width} {height}" '
-        f'width="{width}" height="{height}" role="img" aria-labelledby="native-diagram-title" '
-        f'data-renderer="schauwerk-native-diagram-v1" '
-        f'data-visual-grammar="{_xml_escape(GRAMMAR_SCHEMA_VERSION)}" '
-        f'data-intent="{_xml_escape(str(model["intent"]))}" '
-        f'data-input-digest="{_xml_escape(str(model["input_digest"]))}">',
-        f'<title id="native-diagram-title">{_xml_escape(str(model["title"]))}</title>',
-        f'<desc>{_xml_escape(str(model["purpose"]))}</desc>',
-        f'<rect width="{width}" height="{height}" fill="#f8fafc"/>',
-    ]
-    lines.extend(_marker_definitions())
-    lines.append(
-        _clip_definition(
-            title_clip_id,
-            x=_PAGE_MARGIN,
-            y=20,
-            width=purpose_max_width,
-            height=40,
+    def render_header(width: int, height: int) -> list[str]:
+        header_width = width - 2 * _PAGE_MARGIN
+        lines = [
+            '<?xml version="1.0" encoding="UTF-8"?>',
+            f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {width} {height}" '
+            f'width="{width}" height="{height}" role="img" aria-labelledby="native-diagram-title" '
+            f'data-renderer="schauwerk-native-diagram-v1" '
+            f'data-visual-grammar="{_xml_escape(GRAMMAR_SCHEMA_VERSION)}" '
+            f'data-intent="{_xml_escape(str(model["intent"]))}" '
+            f'data-input-digest="{_xml_escape(str(model["input_digest"]))}">',
+            f'<title id="native-diagram-title">{_xml_escape(str(model["title"]))}</title>',
+            f'<desc>{_xml_escape(str(model["purpose"]))}</desc>',
+            f'<rect width="{width}" height="{height}" fill="#f8fafc"/>',
+        ]
+        lines.extend(_marker_definitions())
+        lines.append(
+            _clip_definition(
+                title_clip_id,
+                x=_PAGE_MARGIN,
+                y=20,
+                width=header_width,
+                height=40,
+            )
         )
-    )
-    lines.append(
-        _clip_definition(
-            purpose_clip_id,
-            x=_PAGE_MARGIN,
-            y=64,
-            width=purpose_max_width,
-            height=40,
+        lines.append(
+            _clip_definition(
+                purpose_clip_id,
+                x=_PAGE_MARGIN,
+                y=64,
+                width=header_width,
+                height=40,
+            )
         )
-    )
-    lines.extend(
-        _svg_text_lines(
-            title_lines,
-            x=_PAGE_MARGIN,
-            y=52,
-            line_height=32,
-            size=28,
-            weight=750,
-            color="#172033",
-            max_width=purpose_max_width,
-            clip_id=title_clip_id,
+        lines.extend(
+            _svg_text_lines(
+                title_lines,
+                x=_PAGE_MARGIN,
+                y=52,
+                line_height=32,
+                size=28,
+                weight=750,
+                color="#172033",
+                max_width=header_width,
+                clip_id=title_clip_id,
+            )
         )
-    )
-    lines.extend(
-        _svg_text_lines(
-            purpose_lines,
-            x=_PAGE_MARGIN,
-            y=82,
-            line_height=19,
-            size=15,
-            weight=400,
-            color="#52606d",
-            max_width=purpose_max_width,
-            clip_id=purpose_clip_id,
+        lines.extend(
+            _svg_text_lines(
+                purpose_lines,
+                x=_PAGE_MARGIN,
+                y=82,
+                line_height=19,
+                size=15,
+                weight=400,
+                color="#52606d",
+                max_width=header_width,
+                clip_id=purpose_clip_id,
+            )
         )
-    )
+
+        return lines
+
+    lines = render_header(width, height)
+    header_length = len(lines)
 
     group_separator_y = 50 if intent == "knowledge_map" else 44
     for region_index, (group_id, label, x, y, region_width, region_height) in enumerate(regions):
         if (
             intent == "knowledge_map"
-            and len(model["nodes"]) <= _KNOWLEDGE_MAP_COMPACT_NODE_LIMIT
+            and _knowledge_map_compact_layout(len(model["nodes"]), model["edges"])
             and group_id is None and label == "Leitbegriff"
         ):
             # A placement column does not create a fifth thematic group.
@@ -8003,6 +8382,8 @@ def render_native_diagram(
         card_target_port_x: float | None = None,
         card_source_port_x: float | None = None,
         card_side_route_path: str | None = None,
+        local_self_loop_path: str | None = None,
+        mixed_process_path: str | None = None,
     ) -> list[str]:
         return _render_edge(
                 edge,
@@ -8079,6 +8460,8 @@ def render_native_diagram(
                 ),
                 final_label_override=label_position_override,
                 process_row_card_side_path=card_side_route_path,
+                process_local_self_loop_path=local_self_loop_path,
+                mixed_process_path=mixed_process_path,
             )
 
     # Keep the established renderer byte-for-byte for all unaffected edges.
@@ -10535,10 +10918,27 @@ def render_native_diagram(
                 20 <= len(paint_edges) <= 40
                 and any(boxes_overlap(old_box, box) for box in node_boxes)
             )
-            if not blocked_by_peer_label and not blocked_by_card:
+            # Reserve the extra distance checks for small and medium maps.
+            peers = [
+                path for other_id, (path, _) in label_layout.items()
+                if other_id != edge_id
+            ]
+            ambiguous = False
+            if len(paint_edges) <= 40:
+                own_distance = _process_label_path_distance_sq(own_path, old_box)
+                ambiguous = own_distance is not None and any(
+                    (distance := _process_label_path_distance_sq(path, old_box)) is not None
+                    and distance <= own_distance + 1
+                    for path in peers
+                )
+            if not blocked_by_peer_label and not blocked_by_card and not ambiguous:
                 continue
+            collision_free_fallback = None
             for trial in _process_near_path_label_boxes(
-                own_path, old_box, limit=320
+                # Small and medium maps can afford a few more candidates
+                # before falling back to the viewer's independent correction.
+                # Keep the existing cap on dense graphs.
+                own_path, old_box, limit=512 if len(paint_edges) <= 40 else 320
             ):
                 if (
                     trial[0] < 8 or trial[0] + trial[2] > width - 8
@@ -10557,6 +10957,21 @@ def render_native_diagram(
                     )
                 ):
                     continue
+                ownership_clear = True
+                if ambiguous:
+                    distance = _process_label_path_distance_sq(own_path, trial)
+                    ownership_clear = not (
+                        distance is None or distance > 100**2 or any(
+                            (d := _process_label_path_distance_sq(path, trial)) is None
+                            or math.sqrt(d) <= math.sqrt(distance) + 8
+                            for path in peers
+                        )
+                    )
+                    if not ownership_clear and (
+                        not (blocked_by_peer_label or blocked_by_card)
+                        or collision_free_fallback is not None
+                    ):
+                        continue
                 fragment = render_planned_edge(
                     movable[edge_id],
                     label_position_override=(
@@ -10566,18 +10981,435 @@ def render_native_diagram(
                 )
                 candidate_path = edge_path(fragment)
                 candidate_box = label_box(fragment)
-                if (
-                    candidate_path != own_path
-                    or any(
-                        abs(actual - proposed) > 0.1
-                        for actual, proposed in zip(candidate_box, trial)
-                    )
+                if any(
+                    abs(actual - proposed) > .1
+                    for actual, proposed in zip(candidate_box, trial)
                 ):
+                    continue
+                if candidate_path != own_path:
+                    if not ambiguous:
+                        continue
+                    # A readability pass may have replaced the physical path.
+                    # Relocate its label, retaining the certified route bytes.
+                    old_fragment = planned_edge_lines[edge_id]
+                    previous = next(
+                        line for line in old_fragment
+                        if line.startswith('<path d="') and 'fill="none"' in line
+                    )
+                    index = next(
+                        i for i, line in enumerate(fragment)
+                        if line.startswith('<path d="') and 'fill="none"' in line
+                    )
+                    fragment[index] = previous
+                    fragment[0] = old_fragment[0]
+                    candidate_path = own_path
+                if not ownership_clear:
+                    # Prefer clear ownership, but never let an unattainable
+                    # distance margin prevent a physically safe repair.
+                    collision_free_fallback = fragment, candidate_path, candidate_box
                     continue
                 planned_edge_lines[edge_id] = fragment
                 label_layout[edge_id] = candidate_path, candidate_box
                 adjusted += 1
                 break
+            else:
+                if collision_free_fallback is not None:
+                    fragment, candidate_path, candidate_box = collision_free_fallback
+                    planned_edge_lines[edge_id] = fragment
+                    label_layout[edge_id] = candidate_path, candidate_box
+                    adjusted += 1
+
+        # Shorten genuinely long same-row forward feedback only after
+        # the existing layout and label packing have settled. Keep the
+        # original footer intact whenever no safe local route exists.
+        for edge in feedback_edges:
+            edge_id = str(edge["id"])
+            source_id, target_id = str(edge["from"]), str(edge["to"])
+            sx, sy = positions[source_id]
+            tx, ty = positions[target_id]
+            if sy != ty or tx - sx <= _GROUP_WIDTH + _KNOWLEDGE_MAP_GROUP_GAP + 16:
+                continue
+            old_path, old_box = label_layout[edge_id]
+            old_segments = _process_svg_stroke_segments(old_path)
+            old_length = sum(
+                math.dist(a, b) for seg in old_segments for a, b in zip(seg, seg[1:])
+            )
+            if old_length <= 1.8 * (tx - sx):
+                continue
+            peers = [pair for eid, pair in label_layout.items() if eid != edge_id]
+            obstacles = [
+                (float(x), float(y), float(_NODE_WIDTH), float(_NODE_HEIGHT))
+                for nid, (x, y) in positions.items()
+                if nid not in (source_id, target_id)
+            ]
+            obstacles.extend(box for _, box in peers)
+            obstacles.extend((float(x), float(y), float(w), 44.0)
+                             for _, _, x, y, w, _ in regions)
+            bw, bh = old_box[2:]
+            candidates = []
+            for side in (1, -1):
+                py = sy + (_NODE_HEIGHT if side == 1 else 0)
+                for offset in range(math.ceil(bh / 2 + 8),
+                                    math.floor(non_process_row_gap - bh / 2 - 4) + 1, 8):
+                    ry = py + side * offset
+                    if ry < 104 or ry > height - 8:
+                        continue
+                    for port_offset in (0, -32, 32, -64, 64):
+                        ax = sx + _NODE_WIDTH / 2 + port_offset
+                        bx = tx + _NODE_WIDTH / 2 + port_offset
+                        path = (f"M {ax:.1f} {py:.1f} L {ax:.1f} {ry:.1f} "
+                                f"L {bx:.1f} {ry:.1f} L {bx:.1f} {py:.1f}")
+                        if any(_process_svg_path_hits_box(path, box, padding=4)
+                               for box in obstacles):
+                            continue
+                        for fraction in (.25, .5, .75, .15, .85):
+                            cx = ax + (bx - ax) * fraction
+                            for label_y in (ry, ry - side * (bh / 2 + 6),
+                                            ry + side * (bh / 2 + 6)):
+                                box = (cx - bw / 2, label_y - bh / 2, bw, bh)
+                                if (box[0] < 8 or box[0] + bw > width - 8
+                                    or box[1] < 104 or box[1] + bh > height - 8
+                                    or any(boxes_overlap(box, b) for b in node_boxes)
+                                    or any(boxes_overlap(box, b) for _, b in peers)
+                                    or any(_process_svg_path_hits_box(p, box)
+                                           for p, _ in peers)):
+                                    continue
+                                candidates.append((2 * offset + abs(bx - ax),
+                                                   abs(label_y - ry),
+                                                   abs(port_offset), path, cx, label_y))
+            for _, _, _, path, cx, cy in sorted(candidates):
+                fragment = render_planned_edge(edge, label_position_override=(cx, cy))
+                actual = label_box(fragment)
+                if abs(actual[0]+actual[2]/2-cx) > .1 or abs(actual[1]+actual[3]/2-cy) > .1:
+                    continue
+                index = next(i for i, line in enumerate(fragment)
+                             if line.startswith('<path d="') and 'fill="none"' in line)
+                fragment[index] = re.sub(r'd="[^"]+"', f'd="{path}"', fragment[index], count=1)
+                planned_edge_lines[edge_id] = fragment
+                label_layout[edge_id] = path, actual
+                break
+
+        # Distinguish coincident destination ports without moving the cards
+        # or packed captions. Limit the local pass to ordinary knowledge maps.
+        if len(paint_edges) <= 40:
+            edge_by_id = {str(edge["id"]): edge for edge in paint_edges}
+
+            def endpoint(path):
+                segments = _process_svg_stroke_segments(path)
+                return segments[-1][-1] if segments else None
+
+            for edge_id, edge in sorted(edge_by_id.items()):
+                if edge["from"] == edge["to"]:
+                    continue
+                path, own_box = label_layout[edge_id]
+                end = endpoint(path)
+                if end is None:
+                    continue
+                target = str(edge["to"])
+                peers = [
+                    (other_id, other_path, other_box)
+                    for other_id, (other_path, other_box) in label_layout.items()
+                    if other_id != edge_id
+                ]
+                target_ports = [
+                    point for other_id, other_path, _ in peers
+                    if str(edge_by_id[other_id]["to"]) == target
+                    and (point := endpoint(other_path)) is not None
+                ]
+                if not any(math.dist(end, point) < 2 for point in target_ports):
+                    continue
+                x, y = positions[target]
+                if abs(end[0] - x) < .1 or abs(end[0] - x - _NODE_WIDTH) < .1:
+                    tangent = 1
+                    low, high = y + 20, y + _NODE_HEIGHT - 20
+                elif abs(end[1] - y) < .1 or abs(end[1] - y - _NODE_HEIGHT) < .1:
+                    tangent = 0
+                    low, high = x + 20, x + _NODE_WIDTH - 20
+                else:
+                    continue
+                tokens = path.replace(",", " ").split()
+                segments = _process_svg_stroke_segments(path)
+                if not segments or math.dist(segments[-1][0], end) < 24:
+                    continue
+                cubic = len(segments[-1]) == 4
+                # Preserve the normal component of the terminal tangent.
+                # Only move a straight terminal elbow when its predecessor
+                # is also an orthogonal line, otherwise leave it unchanged.
+                if not cubic and (len(segments) < 2 or len(segments[-2]) != 2):
+                    continue
+                old_distance = _process_label_path_distance_sq(path, own_box)
+                for delta in (-16, 16, -24, 24, -36, 36, -48, 48):
+                    port = list(end)
+                    port[tangent] += delta
+                    if not low <= port[tangent] <= high:
+                        continue
+                    if any(math.dist(port, q) < 12 for q in target_ports):
+                        continue
+                    changed = tokens.copy()
+                    changed[-2+tangent] = f"{port[tangent]:.1f}"
+                    if cubic:
+                        changed[-4+tangent] = f"{float(tokens[-4+tangent])+delta:.1f}"
+                    else:
+                        prior = segments[-2]
+                        normal = 1-tangent
+                        if (abs(prior[0][normal]-prior[1][normal]) > .1
+                            or abs(segments[-1][0][tangent]-end[tangent]) > .1):
+                            continue
+                        changed[-5+tangent] = f"{float(tokens[-5+tangent])+delta:.1f}"
+                    proposal = " ".join(changed)
+                    if any(
+                        _process_svg_path_hits_box(
+                            proposal,
+                            (nx+2, ny+2, _NODE_WIDTH-4, _NODE_HEIGHT-4)
+                            if nid in {str(edge["from"]), target}
+                            else (nx, ny, _NODE_WIDTH, _NODE_HEIGHT),
+                            padding=0,
+                        )
+                        for nid, (nx, ny) in positions.items()
+                    ):
+                        continue
+                    new_distance = _process_label_path_distance_sq(proposal, own_box)
+                    if old_distance is None or new_distance is None or (
+                        math.sqrt(new_distance) > math.sqrt(old_distance)+8
+                    ):
+                        continue
+                    # Do not turn an existing caption association or tie
+                    # into a preference for a foreign stroke.
+                    if new_distance > old_distance + 1e-6 and any(
+                        (distance := _process_label_path_distance_sq(peer_path, own_box))
+                        is not None and distance <= new_distance + 1e-6
+                        for _, peer_path, _ in peers
+                    ):
+                        continue
+                    if any(
+                        (_process_svg_path_hits_box(proposal, box)
+                         and not _process_svg_path_hits_box(path, box))
+                        or (_process_paths_share_physical_stroke(proposal, other_path)
+                            and not _process_paths_share_physical_stroke(path, other_path))
+                        or (
+                            (other_distance := _process_label_path_distance_sq(other_path, box))
+                            is not None
+                            and (before := _process_label_path_distance_sq(path, box)) is not None
+                            and (after := _process_label_path_distance_sq(proposal, box))
+                            is not None
+                            and math.sqrt(before) > math.sqrt(other_distance)+8
+                            and math.sqrt(after) <= math.sqrt(other_distance)+8
+                        )
+                        for _, other_path, box in peers
+                    ):
+                        continue
+                    fragment = planned_edge_lines[edge_id]
+                    index = next(i for i, line in enumerate(fragment)
+                                 if line.startswith('<path d="') and 'fill="none"' in line)
+                    fragment[index] = re.sub(
+                        r'd="[^"]+"', f'd="{proposal}"', fragment[index], count=1
+                    )
+                    label_layout[edge_id] = proposal, own_box
+                    break
+
+        # Locally separate shared orthogonal rails after label placement.
+        # Only accept a strictly better route with no new collisions.
+        if len(paint_edges) <= 40:
+            def shared_length(path, peer):
+                first = _process_axis_aligned_stroke_spans(path)
+                second = _process_axis_aligned_stroke_spans(peer)
+                if first is None or second is None:
+                    return math.inf
+                return sum(
+                    max(0.0, min(a[3], b[3]) - max(a[2], b[2]))
+                    for a in first for b in second
+                    if a[0] == b[0] and abs(a[1] - b[1]) < 4
+                )
+
+            def ambiguous_label_hit(route, owner, box):
+                own = _process_label_path_distance_sq(owner, box)
+                other = _process_label_path_distance_sq(route, box)
+                return (
+                    own is not None and other is not None
+                    and math.sqrt(other) <= math.sqrt(own) + 8
+                    and _process_svg_path_hits_box(route, box)
+                )
+
+            for edge_id, edge in sorted(edge_by_id.items()):
+                source_id, target_id = str(edge["from"]), str(edge["to"])
+                if source_id == target_id:
+                    continue
+                peers = [
+                    (other_id, other_path, other_box)
+                    for other_id, (other_path, other_box) in label_layout.items()
+                    if other_id != edge_id
+                ]
+                for _ in range(2):
+                    path, own_box = label_layout[edge_id]
+                    segments = _process_svg_stroke_segments(path)
+                    if not segments or len(segments) < 2 or any(
+                        len(s) != 2 or (s[0][0] != s[1][0] and s[0][1] != s[1][1])
+                        for s in segments
+                    ):
+                        break
+                    points = [segments[0][0], *(s[-1] for s in segments)]
+                    old_overlap = [shared_length(path, other) for _, other, _ in peers]
+                    if any(not math.isfinite(value) for value in old_overlap):
+                        break
+                    old_conflicts = [
+                        ambiguous_label_hit(path, other, box)
+                        for _, other, box in peers
+                    ]
+                    if max(old_overlap, default=0) < 8 and not any(old_conflicts):
+                        break
+                    old_distance = _process_label_path_distance_sq(path, own_box)
+                    if old_distance is None:
+                        break
+                    old_length = sum(math.dist(a, b) for a, b in zip(points, points[1:]))
+                    best = None
+                    for i, (first, last) in enumerate(segments):
+                        axis = 0 if first[0] == last[0] else 1
+                        normal = 1 - axis
+                        if abs(first[normal] - last[normal]) < 16:
+                            continue
+                        stroke = f"M {first[0]} {first[1]} L {last[0]} {last[1]}"
+                        if not any(
+                            shared_length(stroke, peer) >= 8 for _, peer, _ in peers
+                        ) and not any(
+                            conflict and _process_svg_path_hits_box(stroke, box)
+                            for conflict, (_, _, box) in zip(old_conflicts, peers)
+                        ):
+                            continue
+                        deltas = (-12, 12, -16, 16, -24, 24, -32, 32)
+                        if any(old_conflicts):
+                            deltas += (-48, 48, -56, 56)
+                        for delta in deltas:
+                            trial = [list(q) for q in points]
+                            trial[i][axis] += delta
+                            trial[i+1][axis] += delta
+                            if any(
+                                abs(b[0] - a[0]) > .01 and abs(b[1] - a[1]) > .01
+                                or math.dist(a, b) < 4
+                                or (b[0]-a[0])*(d[0]-c[0]) + (b[1]-a[1])*(d[1]-c[1]) <= 0
+                                for a, b, c, d in zip(trial, trial[1:], points, points[1:])
+                            ):
+                                continue
+                            if any(
+                                not (8 <= x <= width - 8 and 104 <= y <= height - 8)
+                                for x, y in trial
+                            ):
+                                continue
+                            # A moved terminal rail may also separate an incoming
+                            # arrow from an outgoing stroke at the same card.
+                            moved_ports = []
+                            if i == 0:
+                                moved_ports.append((source_id, trial[0]))
+                            if i == len(segments)-1:
+                                moved_ports.append((target_id, trial[-1]))
+                            port_ok = True
+                            for nid, port in moved_ports:
+                                x, y = positions[nid]
+                                low = (x, y)[axis] + 20
+                                high = (x + _NODE_WIDTH, y + _NODE_HEIGHT)[axis] - 20
+                                if not low <= port[axis] <= high:
+                                    port_ok = False
+                                    break
+                                for other_id, other, _ in peers:
+                                    other_edge = edge_by_id[other_id]
+                                    other_segments = _process_svg_stroke_segments(other)
+                                    if not other_segments:
+                                        port_ok = False
+                                        break
+                                    if (
+                                        str(other_edge["from"]) == nid
+                                        and math.dist(port, other_segments[0][0]) < 12
+                                    ) or (
+                                        str(other_edge["to"]) == nid
+                                        and math.dist(port, other_segments[-1][-1]) < 12
+                                    ):
+                                        port_ok = False
+                                        break
+                            if not port_ok:
+                                continue
+                            proposal = " ".join(
+                                f"{'M' if j == 0 else 'L'} {x:.1f} {y:.1f}"
+                                for j, (x, y) in enumerate(trial)
+                            )
+                            lengths = [shared_length(proposal, peer) for _, peer, _ in peers]
+                            if any(not math.isfinite(value) for value in lengths):
+                                continue
+                            reduction = sum(old_overlap) - sum(lengths)
+                            if any(b > a + .01 for a, b in zip(old_overlap, lengths)):
+                                continue
+                            if any(
+                                not previous and ambiguous_label_hit(proposal, peer, box)
+                                for previous, (_, peer, box) in zip(old_conflicts, peers)
+                            ):
+                                continue
+                            label_gain = sum(
+                                previous
+                                and not _process_svg_path_hits_box(proposal, box)
+                                and math.sqrt(_process_label_path_distance_sq(proposal, box))
+                                    > math.sqrt(_process_label_path_distance_sq(peer, box)) + 8
+                                for previous, (_, peer, box) in zip(old_conflicts, peers)
+                            )
+                            if reduction < 8 and not label_gain:
+                                continue
+                            length = sum(math.dist(a, b) for a, b in zip(trial, trial[1:]))
+                            if length > old_length + 64:
+                                continue
+                            distance = _process_label_path_distance_sq(proposal, own_box)
+                            if distance is None or math.sqrt(distance) > math.sqrt(old_distance)+12:
+                                continue
+                            if any(
+                                _process_svg_path_hits_box(
+                                    proposal,
+                                    (nx+2, ny+2, _NODE_WIDTH-4, _NODE_HEIGHT-4)
+                                    if nid in {source_id, target_id}
+                                    else (nx, ny, _NODE_WIDTH, _NODE_HEIGHT),
+                                    padding=0,
+                                )
+                                for nid, (nx, ny) in positions.items()
+                            ):
+                                continue
+                            if any(
+                                _process_svg_path_hits_box(proposal, (x, y, w, 44.0), padding=0)
+                                for _, _, x, y, w, _ in regions
+                            ):
+                                continue
+                            if any(
+                                (
+                                    _process_svg_path_hits_box(proposal, box)
+                                    and not _process_svg_path_hits_box(path, box)
+                                ) or (
+                                    (reference := _process_label_path_distance_sq(peer, box))
+                                    is not None
+                                    and (before := _process_label_path_distance_sq(path, box))
+                                    is not None
+                                    and (after := _process_label_path_distance_sq(proposal, box))
+                                    is not None
+                                    and math.sqrt(before) > math.sqrt(reference)+8
+                                    and math.sqrt(after) <= math.sqrt(reference)+8
+                                )
+                                for _, peer, box in peers
+                            ):
+                                continue
+                            if any(
+                                (reference := _process_label_path_distance_sq(peer, own_box))
+                                is not None
+                                and math.sqrt(reference) > math.sqrt(old_distance)+8
+                                and math.sqrt(reference) <= math.sqrt(distance)+8
+                                for _, peer, _ in peers
+                            ):
+                                continue
+                            score = (-label_gain, -reduction, length, abs(delta), proposal)
+                            if best is None or score < best[0]:
+                                best = (score, proposal)
+                    if best is None:
+                        break
+                    proposal = best[1]
+                    fragment = planned_edge_lines[edge_id]
+                    index = next(i for i, line in enumerate(fragment)
+                                 if line.startswith('<path d="') and 'fill="none"' in line)
+                    fragment[index] = re.sub(
+                        r'd="[^"]+"', f'd="{proposal}"', fragment[index], count=1
+                    )
+                    label_layout[edge_id] = proposal, own_box
 
         label_clearances: list[tuple[float, float, float, float]] = []
         for fragment in planned_edge_lines.values():
@@ -10635,6 +11467,208 @@ def render_native_diagram(
                         1,
                     )
                     break
+
+    compact_process_frame = False
+    # Process overflow previously moved only the text box, leaving its
+    # self-loop on a distant card. Replan the pair in the existing free space.
+    if intent == "process" and any(edge["from"] == edge["to"] for edge in paint_edges):
+        import xml.etree.ElementTree as ET
+
+        def loop_parts(fragment: list[str]) -> tuple[str, tuple[float, float, float, float]]:
+            group = ET.fromstring("\n".join(fragment))
+            path = next(child.get("d", "") for child in group
+                        if child.tag == "path" and child.get("fill") == "none")
+            label = next(child for child in group
+                         if child.tag == "rect" and child.get("rx") == "9")
+            return path, tuple(float(label.attrib[name]) for name in ("x", "y", "width", "height"))
+
+        loop_layout = {edge_id: loop_parts(fragment)
+                       for edge_id, fragment in planned_edge_lines.items()}
+        cards = [(float(x), float(y), float(_NODE_WIDTH), float(_NODE_HEIGHT))
+                 for x, y in positions.values()]
+        headers = [(_PAGE_MARGIN, 20.0, width - 2 * _PAGE_MARGIN, 84.0)]
+        headers.extend((x, y, region_width, 44.0)
+                       for _, _, x, y, region_width, _ in regions)
+        loops = sorted(
+            (edge for edge in paint_edges
+             if edge["from"] == edge["to"] and edge["kind"] != "feedback"),
+            key=_process_anchor_order_key,
+        )
+        detached = {
+            str(edge["id"]) for edge in loops
+            if not _process_label_near_own_path(
+                *loop_layout[str(edge["id"])], max_distance=140.0,
+            )
+        }
+        affected_sources = {
+            str(edge["from"]) for edge in loops if str(edge["id"]) in detached
+        }
+        # First repair the detached labels, then improve their stacked
+        # siblings where free local space remains. Singletons are unchanged.
+        ordered_loops = [
+            *[edge for edge in loops if str(edge["id"]) in detached],
+            *[edge for edge in loops if str(edge["id"]) not in detached
+              and str(edge["from"]) in affected_sources],
+        ]
+        # Dense stacks need simultaneous planning: the old arcs and remote
+        # labels are not obstacles that should survive their replacement.
+        dense_by_source: dict[str, list[Mapping[str, Any]]] = defaultdict(list)
+        for edge in loops:
+            dense_by_source[str(edge["from"])].append(edge)
+        dense_by_source = {
+            source_id: stack for source_id, stack in dense_by_source.items()
+            if len(stack) > 4
+        }
+        dense_planned: set[str] = set()
+        dense_unresolved = False
+        for source_id, stack in sorted(dense_by_source.items()):
+            ids = {str(edge["id"]) for edge in stack}
+            plans = _process_dense_loop_stack(
+                positions[source_id],
+                [(str(edge["id"]), loop_layout[str(edge["id"])][1]) for edge in stack],
+                canvas_width=width, canvas_height=height,
+                card_boxes=cards, header_boxes=headers,
+                peers=[pair for edge_id, pair in loop_layout.items() if edge_id not in ids],
+            )
+            if plans is None:
+                dense_unresolved = True
+                continue
+            for edge in stack:
+                edge_id = str(edge["id"])
+                path, cx, cy = plans[edge_id]
+                fragment = render_planned_edge(
+                    edge, local_self_loop_path=path, label_position_override=(cx, cy),
+                )
+                planned_edge_lines[edge_id] = fragment
+                loop_layout[edge_id] = loop_parts(fragment)
+                dense_planned.add(edge_id)
+        compact_process_frame = bool(dense_by_source) and not dense_unresolved
+        if dense_unresolved and not _process_loop_gap_extra:
+            reserve = max(
+                sum(loop_layout[str(edge["id"])][1][3] + 12 for edge in stack) + 36
+                for stack in dense_by_source.values()
+            )
+            return render_native_diagram(
+                value, _process_group_gap_extra=_process_group_gap_extra,
+                _process_loop_gap_extra=max(216, math.ceil(reserve)),
+                _process_uniform_loop_reserve=_process_uniform_loop_reserve,
+            )
+
+        complete_mixed_plan = False
+        if (
+            _process_loop_gap_extra and dense_by_source
+            and any(edge["from"] != edge["to"] for edge in paint_edges)
+        ):
+            mixed_plan = _process_mixed_dense_plan(
+                positions, paint_edges, loop_layout, dense_by_source,
+                canvas_width=width, canvas_height=height,
+                card_boxes=cards, header_boxes=headers,
+            )
+            if mixed_plan is not None:
+                dense_ids = {
+                    str(edge["id"]) for stack in dense_by_source.values() for edge in stack
+                }
+                fragments = {}
+                for edge in paint_edges:
+                    edge_id = str(edge["id"])
+                    path, cx, cy = mixed_plan[edge_id]
+                    fragment = render_planned_edge(
+                        edge,
+                        local_self_loop_path=path if edge_id in dense_ids else None,
+                        mixed_process_path=path if edge_id not in dense_ids else None,
+                        label_position_override=(cx, cy),
+                    )
+                    actual_path, actual_box = loop_parts(fragment)
+                    if (
+                        actual_path != path
+                        or abs(actual_box[0]+actual_box[2]/2-cx) > .1
+                        or abs(actual_box[1]+actual_box[3]/2-cy) > .1
+                    ):
+                        break
+                    fragments[edge_id] = fragment
+                else:
+                    planned_edge_lines.update(fragments)
+                    compact_process_frame = True
+                    complete_mixed_plan = True
+                    ordered_loops = []
+
+        if local_reserve and not complete_mixed_plan:
+            # Keep the previously accepted uniform layout if the complete
+            # reroute cannot be realized. This retry is strictly bounded.
+            return render_native_diagram(
+                value, _process_group_gap_extra=_process_group_gap_extra,
+                _process_loop_gap_extra=_process_loop_gap_extra,
+                _process_uniform_loop_reserve=True,
+            )
+
+        unresolved_loop_ids = []
+        for edge in ordered_loops:
+            if str(edge["id"]) in dense_planned:
+                continue
+            edge_id = str(edge["id"])
+            path, box = loop_layout[edge_id]
+            if _process_label_near_own_path(path, box, max_distance=40.0):
+                continue
+            candidate = _process_local_self_loop_plan(
+                positions[str(edge["from"])], box,
+                canvas_width=width, canvas_height=height, card_boxes=cards,
+                header_boxes=headers,
+                peers=[pair for other_id, pair in loop_layout.items() if other_id != edge_id],
+            )
+            if candidate is None:
+                if edge_id in detached:
+                    unresolved_loop_ids.append(edge_id)
+                continue
+            route, cx, cy = candidate
+            fragment = render_planned_edge(
+                edge, local_self_loop_path=route, label_position_override=(cx, cy),
+            )
+            planned_edge_lines[edge_id] = fragment
+            loop_layout[edge_id] = loop_parts(fragment)
+        if unresolved_loop_ids and not _process_loop_gap_extra:
+            return render_native_diagram(
+                value, _process_group_gap_extra=_process_group_gap_extra,
+                _process_loop_gap_extra=min(216, 64 + 48 * len(unresolved_loop_ids)),
+                _process_uniform_loop_reserve=_process_uniform_loop_reserve,
+            )
+
+    if compact_process_frame:
+        # The final dense plan replaces obsolete outer gutters. Shrink only
+        # the frame, never the accepted positions or paths. Cubic control
+        # points conservatively bound the entire rendered curve.
+        extent = [
+            (float(x + _NODE_WIDTH), float(y + _NODE_HEIGHT))
+            for x, y in positions.values()
+        ]
+        extent.extend(
+            (float(x + rw), float(y + rh)) for _, _, x, y, rw, rh in regions
+        )
+        for fragment in planned_edge_lines.values():
+            path, box = loop_parts(fragment)
+            parsed = _process_svg_stroke_segments(path)
+            if not parsed:
+                break
+            extent.extend(point for segment in parsed for point in segment)
+            extent.append((box[0] + box[2], box[1] + box[3]))
+        else:
+            # Retain the original wrapping and leave extra glyph clearance.
+            text_width = max(
+                [
+                    max(_estimated_wrap_width(line, size=size),
+                        _estimated_text_width(line, size=size))
+                    for text_lines, size in ((title_lines, 28), (purpose_lines, 15))
+                    for line in text_lines
+                ] + [0]
+            )
+            compact_width = min(width, math.ceil(max(
+                max(x for x, _ in extent) + _PAGE_MARGIN,
+                text_width + 2 * _PAGE_MARGIN + 16, 600,
+            )))
+            compact_height = min(
+                height, math.ceil(max(y for _, y in extent) + _PAGE_MARGIN)
+            )
+            if compact_width < width or compact_height < height:
+                lines[:header_length] = render_header(compact_width, compact_height)
 
     for edge in paint_edges:
         lines.extend(planned_edge_lines[str(edge["id"])])

@@ -227,11 +227,56 @@ def _node_kind(style: object) -> str:
     return "concept"
 
 
-def _edge_kind(style: object) -> str:
-    values = _style_map(style)
-    if values.get("endarrow") in {"none", ""} and values.get("startarrow") in {"none", ""}:
-        return "association"
-    return "flow"
+def _edge_semantics(style: object) -> tuple[str, bool]:
+    """Resolve ordinary connector direction without losing richer arrow semantics."""
+    raw = str(style or "").strip()
+    # draw.io's defaultEdge stylesheet supplies endArrow=classic, no start
+    # marker. A leading semicolon deliberately suppresses stylesheet defaults.
+    values = {} if raw.startswith(";") else {"endArrow": "classic"}
+    for item in raw.split(";"):
+        token = item.strip()
+        if not token:
+            continue
+        if "=" not in token:
+            if token == "defaultEdge":
+                values["endArrow"] = "classic"
+                values["shape"] = "connector"
+                continue
+            # Named styles can define markers or a non-connector shape. They
+            # are not embedded in the source; never guess their semantics.
+            raise DrawioImportError(
+                f"draw.io named edge style {token!r} requires compatibility mode"
+            )
+        key, value = token.split("=", 1)
+        values[key.strip()] = value.strip()
+    if values.get("shape", "connector") not in {"connector", "none", ""}:
+        raise DrawioImportError("draw.io non-connector edge shape requires compatibility mode")
+    ordinary = {"classic", "classicThin", "block", "blockThin", "open", "openThin"}
+    absent = {"none", ""}
+    start = values.get("startArrow", "")
+    end = values.get("endArrow", "")
+    for side, marker in (("start", start), ("end", end)):
+        if marker not in ordinary | absent:
+            raise DrawioImportError(
+                f"draw.io {side} marker {marker!r} requires compatibility mode"
+            )
+        if (
+            marker in {"classic", "classicThin", "block", "blockThin"}
+            and values.get(side + "Fill") == "0"
+        ):
+            raise DrawioImportError(
+                f"draw.io hollow {side} marker {marker!r} requires compatibility mode"
+            )
+    if start in ordinary and end in ordinary:
+        # A single representation edge can express one arrow or none, but
+        # not two markers. Keep the original relation in the legacy editor
+        # rather than duplicating it or silently dropping an arrow.
+        raise DrawioImportError("draw.io bidirectional edge requires compatibility mode")
+    if start in ordinary:
+        return "flow", True
+    if end in ordinary:
+        return "flow", False
+    return "association", False
 
 
 def _cell_label(cell: ET.Element, parent_by_id: dict[int, ET.Element]) -> object:
@@ -362,13 +407,16 @@ def drawio_xml_to_representation(source: str, *, title: str | None = None) -> di
         original_id = _cell_identity(cell, parent_by_id)
         if original_id is None:
             raise DrawioImportError("draw.io semantic edge identity unexpectedly missing")
+        kind, reverse = _edge_semantics(cell.get("style"))
+        if reverse:
+            source_id, target_id = target_id, source_id
         edges.append(
             {
                 "id": _stable_id("edge", original_id),
                 "from": node_id_map[source_id],
                 "to": node_id_map[target_id],
                 "label": _edge_label(_cell_label(cell, parent_by_id)),
-                "kind": _edge_kind(cell.get("style")),
+                "kind": kind,
             }
         )
 

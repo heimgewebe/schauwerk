@@ -14,6 +14,9 @@ from schauwerk.visual.native_diagram import (
     _cubic_hull_intersects_box,
     _ellipsize_to_width,
     _estimated_wrap_width,
+    _process_label_path_distance_sq,
+    _process_svg_path_hits_box,
+    _process_svg_stroke_segments,
     _rebalance_single_word_lines,
     _split_token_to_width,
     _xml_escape,
@@ -4745,7 +4748,7 @@ def _two_process_self_loops_model(node_count: int = 1) -> dict:
 
 
 @pytest.mark.parametrize("node_count", [1, 12])
-def test_two_process_self_loop_labels_pack_without_changing_arc_lanes(node_count: int) -> None:
+def test_two_process_self_loop_labels_pack_with_own_distinct_paths(node_count: int) -> None:
     raw = _two_process_self_loops_model(node_count)
     # The minimal one-node model on 7c9b41e put 198x48 and 212x48 labels
     # at (257.5, 108) and (261, 108): centres only 10.5 px apart.
@@ -4756,14 +4759,204 @@ def test_two_process_self_loop_labels_pack_without_changing_arc_lanes(node_count
     solo = copy.deepcopy(raw)
     solo["edges"] = solo["edges"][:1]
     singleton = _parse(render_native_diagram(solo))
-    assert _edge_label_boxes(root)["loop_a"] == _edge_label_boxes(singleton)["loop_a"]
-    assert _edge_paths(root)["loop_a"] == _edge_paths(singleton)["loop_a"]
     assert len(set(_edge_paths(root).values())) == 2
+    assert _process_label_path_distance_sq(
+        _edge_paths(root)["loop_a"], _edge_label_boxes(root)["loop_a"]
+    ) <= _process_label_path_distance_sq(
+        _edge_paths(singleton)["loop_a"], _edge_label_boxes(singleton)["loop_a"]
+    )
+    paths, boxes = _edge_paths(root), _edge_label_boxes(root)
+    for edge_id, box in boxes.items():
+        own_distance = _process_label_path_distance_sq(paths[edge_id], box)
+        assert own_distance is not None and own_distance <= 100**2
+        assert all(_process_label_path_distance_sq(path, box) > own_distance
+                   for other_id, path in paths.items() if other_id != edge_id)
     if node_count == 1:
-        assert _edge_paths(root) == {
-            "loop_a": "M 298.0 218.1 C 376.0 174.1, 376.0 323.5, 298.0 279.5",
-            "loop_b": "M 298.0 218.1 C 390.0 174.1, 390.0 323.5, 298.0 279.5",
-        }
+        # The previous second path left its label hundreds of units away.
+        # Both loops may now move; the separate singleton test preserves the
+        # unchanged one-relation case, not the old broken stacked geometry.
+        assert paths["loop_b"] != "M 298.0 218.1 C 390.0 174.1, 390.0 323.5, 298.0 279.5"
+
+
+@pytest.mark.parametrize("node_count,source_index", [(2, 0), (6, 0), (12, 0), (12, 11)])
+@pytest.mark.parametrize("labels", [
+    ["Selbstbezug 0", "Selbstbezug 1"],
+    ["erster selbstbezug mit langem text", "zweizeiliger selbstbezug der karte"],
+    [f"Selbstbezug {index}" for index in range(4)],
+])
+def test_process_loop_label_stays_with_its_own_path(node_count, source_index, labels) -> None:
+    raw = _minimal_process_model(node_count)
+    source_id = f"n{source_index}"
+    raw["edges"] = [
+        {"id": f"loop_{i}", "from": source_id, "to": source_id,
+         "label": label, "kind": "flow"}
+        for i, label in enumerate(labels)
+    ]
+
+    def measure(model):
+        root = _parse(render_native_diagram(model))
+        boxes, paths, cards = _edge_label_boxes(root), _edge_paths(root), _node_boxes(root)
+        width, height = map(float, root.attrib["viewBox"].split()[2:])
+        assert len(set(paths.values())) == len(labels)
+        for edge_id, box in boxes.items():
+            x, y, lw, lh = box
+            distance = _process_label_path_distance_sq(paths[edge_id], box)
+            assert distance is not None and distance <= 100**2
+            assert 0 <= x and x + lw <= width and 104 <= y and y + lh <= height
+            assert all(not _boxes_overlap(box, card) for card in cards.values())
+            for card_id, card in cards.items():
+                if card_id != source_id:
+                    assert not _process_svg_path_hits_box(paths[edge_id], card, padding=0)
+            for other_id, other_box in boxes.items():
+                if edge_id == other_id:
+                    continue
+                assert not _boxes_overlap(box, other_box)
+                assert not _process_svg_path_hits_box(paths[other_id], box)
+                assert _process_label_path_distance_sq(paths[other_id], box) > distance
+        return boxes, paths, root.attrib["viewBox"]
+
+    forward = measure(raw)
+    raw["edges"].reverse()
+    assert measure(raw) == forward
+
+
+@pytest.mark.parametrize("node_count,count", [(2, 8), (6, 12), (12, 16), (12, 32)])
+def test_dense_process_loop_stack_keeps_all_labels_on_distinct_paths(node_count, count) -> None:
+    raw = _minimal_process_model(node_count)
+    raw["edges"] = [
+        {"id": f"loop_{i:02d}", "from": "n0", "to": "n0",
+         "label": f"Selbstbezug {i:02d}" if i % 2 == 0
+                  else f"Selbstbezug {i:02d} mit längerem Text",
+         "kind": "flow"}
+        for i in range(count)
+    ]
+
+    def measure(model):
+        root = _parse(render_native_diagram(model))
+        boxes, paths, cards = _edge_label_boxes(root), _edge_paths(root), _node_boxes(root)
+        width, height = map(float, root.attrib["viewBox"].split()[2:])
+        assert len(set(paths.values())) == count
+        for edge_id, box in boxes.items():
+            x, y, lw, lh = box
+            distance = _process_label_path_distance_sq(paths[edge_id], box)
+            assert distance is not None and distance <= 1
+            assert 8 <= x and x + lw <= width - 8 and 104 <= y and y + lh <= height - 8
+            assert all(not _boxes_overlap(box, card) for card in cards.values())
+            for card_id, card in cards.items():
+                if card_id != "n0":
+                    assert not _process_svg_path_hits_box(paths[edge_id], card, padding=0)
+            for other_id, other_box in boxes.items():
+                if edge_id == other_id:
+                    continue
+                assert not _boxes_overlap(box, other_box)
+                assert not _process_svg_path_hits_box(paths[other_id], box)
+                assert _process_label_path_distance_sq(paths[other_id], box) > distance
+        return boxes, paths, root.attrib["viewBox"]
+
+    forward = measure(raw)
+    raw["edges"].reverse()
+    assert measure(raw) == forward
+
+
+@pytest.mark.parametrize("grouped", [False, True])
+@pytest.mark.parametrize("source_id", ["n0", "n3"])
+def test_dense_mixed_process_routes_keep_labels_and_paths_unambiguous(grouped, source_id) -> None:
+    raw = _minimal_process_model(8)
+    if grouped:
+        raw["groups"] = [{"id": "g0", "label": "Phase 1"}, {"id": "g1", "label": "Phase 2"}]
+        for i, node in enumerate(raw["nodes"]):
+            node["group"] = f"g{i//4}"
+    raw["edges"] = [
+        {"id": f"loop_{i:02d}", "from": source_id, "to": source_id,
+         "label": f"Selbstbezug {i:02d}" + (" mit längerem Text" if i % 2 else ""),
+         "kind": "flow"}
+        for i in range(8)
+    ]
+    peers = (
+        [("n0", "n1", "flow"), ("n1", "n0", "feedback")]
+        if source_id == "n0" else
+        [("n3", "n0", "flow"), ("n3", "n6", "flow"), ("n5", "n3", "risk")]
+    )
+    raw["edges"].extend(
+        {"id": f"peer_{i}", "from": a, "to": b,
+         "label": f"Prozessbeziehung {i}", "kind": kind}
+        for i, (a, b, kind) in enumerate(peers)
+    )
+    relations = {edge["id"]: edge for edge in raw["edges"]}
+
+    def measure(model):
+        root = _parse(render_native_diagram(model))
+        boxes, paths, cards = _edge_label_boxes(root), _edge_paths(root), _node_boxes(root)
+        width, height = map(float, root.attrib["viewBox"].split()[2:])
+        assert len(set(paths.values())) == len(relations)
+        for edge_id, box in boxes.items():
+            x, y, lw, lh = box
+            distance = _process_label_path_distance_sq(paths[edge_id], box)
+            assert distance is not None and distance <= 40**2
+            assert 8 <= x and x + lw <= width - 8 and 104 <= y and y + lh <= height - 8
+            assert all(not _boxes_overlap(box, card) for card in cards.values())
+            relation = relations[edge_id]
+            for card_id, card in cards.items():
+                if card_id not in {relation["from"], relation["to"]}:
+                    assert not _process_svg_path_hits_box(paths[edge_id], card, padding=0)
+            for other_id, other_box in boxes.items():
+                if edge_id == other_id:
+                    continue
+                assert not _boxes_overlap(box, other_box)
+                assert not _process_svg_path_hits_box(paths[other_id], box)
+                assert _process_label_path_distance_sq(paths[other_id], box) > distance
+        return boxes, paths, root.attrib["viewBox"]
+
+    forward = measure(raw)
+    raw["edges"].reverse()
+    assert measure(raw) == forward
+
+
+@pytest.mark.parametrize("grouped", [False, True])
+def test_dense_process_frame_tracks_final_geometry_not_discarded_gutters(grouped) -> None:
+    raw = _minimal_process_model(8)
+    if grouped:
+        raw["groups"] = [{"id": "g0", "label": "Phase 1"}, {"id": "g1", "label": "Phase 2"}]
+        for i, node in enumerate(raw["nodes"]):
+            node["group"] = f"g{i//4}"
+    raw["edges"] = [
+        {"id": f"loop_{i:02d}", "from": "n0", "to": "n0",
+         "label": f"Selbstbezug {i:02d}" + (" mit längerem Text" if i % 2 else ""),
+         "kind": "flow"}
+        for i in range(8)
+    ]
+    raw["edges"].extend([
+        {"id": "peer_0", "from": "n0", "to": "n1", "label": "Prozessbeziehung 0", "kind": "flow"},
+        {"id": "peer_1", "from": "n1", "to": "n0",
+         "label": "Prozessbeziehung 1", "kind": "feedback"},
+    ])
+    root = _parse(render_native_diagram(raw))
+    _, _, width, height = map(float, root.attrib["viewBox"].split())
+    assert width < (1400 if grouped else 2600)
+    assert float(root.attrib["width"]) == width
+    assert float(root.attrib["height"]) == height
+    for x, y, w, h in [*_node_boxes(root).values(), *_edge_label_boxes(root).values()]:
+        assert 0 <= x <= x+w <= width-8
+        assert 0 <= y <= y+h <= height-8
+    for path in _edge_paths(root).values():
+        spans = _process_svg_stroke_segments(path)
+        assert spans
+        for segment in spans:
+            for x, y in segment:
+                assert 0 <= x <= width and 0 <= y <= height
+    for group in root.iter(f"{{{SVG_NAMESPACE}}}g"):
+        if group.get("data-source-kind") == "group":
+            box = group.find(f"{{{SVG_NAMESPACE}}}rect")
+            assert box is not None
+            x, y, w, h = _rect_box(box)
+            assert 0 <= x <= x+w <= width and 0 <= y <= y+h <= height
+    for clip in root.iter(f"{{{SVG_NAMESPACE}}}clipPath"):
+        if clip.get("id") in {"native-clip-title", "native-clip-purpose"}:
+            rect = clip.find(f"{{{SVG_NAMESPACE}}}rect")
+            assert rect is not None
+            x, _, w, _ = _rect_box(rect)
+            assert x+w <= width-8
+    assert root.find(f"{{{SVG_NAMESPACE}}}title").text == raw["title"]
 
 
 @pytest.mark.parametrize("edge_id", ["loop_a", "loop_b"])
@@ -10158,3 +10351,109 @@ def test_pr206_local_group_branch_gutters_remain_in_separate_legal_lanes(
     _parse(render_native_diagram(model))
     model["edges"].reverse()
     _parse(render_native_diagram(model))
+
+
+@pytest.mark.parametrize("reverse_order", [False, True])
+def test_ambiguous_knowledge_map_loops_keep_collision_free_fallback(
+    reverse_order: bool,
+) -> None:
+    """An unattainable ownership margin must not suppress collision repair."""
+    model = _minimal_process_model(3)
+    model["intent"] = "knowledge_map"
+    relations = (
+        ("n0", "n0", "risk", "long label"),
+        ("n0", "n0", "risk", "long label"),
+        ("n2", "n1", "flow", "link"),
+        ("n1", "n0", "risk", "link"),
+    )
+    model["edges"] = [
+        {"id": f"e{i}", "from": source, "to": target,
+         "kind": kind, "label": label}
+        for i, (source, target, kind, label) in enumerate(relations)
+    ]
+    if reverse_order:
+        model["edges"].reverse()
+    root = _parse(render_native_diagram(model))
+    labels, nodes = _edge_label_boxes(root), _node_boxes(root)
+    for edge_id in ("e0", "e1"):
+        box = labels[edge_id]
+        assert not any(_boxes_overlap(box, b) for b in nodes.values())
+        assert not any(
+            _boxes_overlap(box, b) for other, b in labels.items()
+            if other != edge_id
+        )
+
+@pytest.mark.parametrize(
+    "node_count,loop_count,peer_count,source_index,height_limit",
+    [(32, 32, 8, 0, 3200), (32, 8, 8, 13, 2200), (14, 8, 13, 7, 1400)],
+)
+def test_dense_process_local_reserve_preserves_unrelated_row_spacing(
+    node_count, loop_count, peer_count, source_index, height_limit
+) -> None:
+    """Dense loops need local room, not repeated empty space in every row."""
+    from schauwerk.visual.native_diagram import _process_paths_share_physical_stroke
+
+    raw = _minimal_process_model(node_count)
+    source = f"n{source_index}"
+    raw["edges"] = [
+        {"id": f"e{i}", "from": source, "to": source,
+         "kind": "risk", "label": "long label"}
+        for i in range(loop_count)
+    ]
+    raw["edges"].extend(
+        {"id": f"e{loop_count + i}", "from": f"n{i}", "to": f"n{i + 1}",
+         "kind": "flow", "label": "link"}
+        for i in range(peer_count)
+    )
+    relations = {edge["id"]: edge for edge in raw["edges"]}
+    root = _parse(render_native_diagram(raw))
+    width, height = map(float, root.attrib["viewBox"].split()[2:])
+    assert height <= height_limit
+    boxes, paths, cards = _edge_label_boxes(root), _edge_paths(root), _node_boxes(root)
+    assert len(set(paths.values())) == len(relations)
+    for edge_id, box in boxes.items():
+        x, y, w, h = box
+        assert 0 <= x <= x + w <= width and 104 <= y <= y + h <= height
+        own = _process_label_path_distance_sq(paths[edge_id], box)
+        assert own is not None
+        edge = relations[edge_id]
+        for card_id, card in cards.items():
+            assert not _boxes_overlap(box, card)
+            if card_id not in {edge["from"], edge["to"]}:
+                assert not _process_svg_path_hits_box(paths[edge_id], card)
+        for other_id, other_box in boxes.items():
+            if other_id != edge_id:
+                assert not _boxes_overlap(box, other_box)
+                assert not _process_svg_path_hits_box(paths[other_id], box)
+                assert not _process_paths_share_physical_stroke(paths[edge_id], paths[other_id])
+                assert _process_label_path_distance_sq(paths[other_id], box) > own
+    raw["edges"].reverse()
+    reverse = _parse(render_native_diagram(raw))
+    assert _edge_paths(reverse) == paths
+    assert _edge_label_boxes(reverse) == boxes
+    assert reverse.attrib["viewBox"] == root.attrib["viewBox"]
+
+
+
+def test_local_loop_reserve_preserves_uniform_layout_when_mixed_plan_fails():
+    import itertools
+    import random
+
+    count, stacks, links = 18, [(0, 8), (13, 8)], 17
+    raw = _minimal_process_model(count)
+    rng = random.Random(count + sum(a + b for a, b in stacks) + links)
+    raw["edges"] = [
+        {"id": f"l{j}_{i}", "from": f"n{node}", "to": f"n{node}",
+         "kind": "risk" if i % 2 else "flow", "label": f"Self loop {i}"}
+        for j, (node, size) in enumerate(stacks) for i in range(size)
+    ]
+    pairs = list(itertools.permutations(range(count), 2))
+    rng.shuffle(pairs)
+    raw["edges"] += [
+        {"id": f"p{i}", "from": f"n{a}", "to": f"n{b}",
+         "kind": "feedback" if i % 5 == 0 else "flow", "label": f"link {i}"}
+        for i, (a, b) in enumerate(pairs[:links])
+    ]
+    assert render_native_diagram(raw) == render_native_diagram(
+        raw, _process_uniform_loop_reserve=True,
+    )

@@ -2981,7 +2981,17 @@ async function launchNative(load, options = {}) {
       headers,
       body: JSON.stringify(requestValue),
     });
-    const result = await response.json();
+    let result;
+    try {
+      result = await response.json();
+    } catch (_) {
+      const renderError = new Error(
+        "Nativer Renderer lieferte keine lesbare JSON-Antwort (HTTP "
+        + response.status + ").",
+      );
+      renderError.nativeStatus = response.status;
+      throw renderError;
+    }
     const nativeUrl = String(result?.url || "");
     const nativeToken = nativeTokenFromUrl(nativeUrl);
     if (response.ok && nativeToken) {
@@ -2989,7 +2999,11 @@ async function launchNative(load, options = {}) {
     }
     if (loadIntent !== loadIntentGeneration) return;
     if (!response.ok) {
-      const renderError = new Error(result?.error || "Nativer Renderer hat die Eingabe abgelehnt.");
+      const renderError = new Error(
+        typeof result?.error === "string" && result.error.trim()
+          ? result.error
+          : "Nativer Renderer hat die Eingabe abgelehnt (HTTP " + response.status + ").",
+      );
       renderError.nativeStatus = response.status;
       throw renderError;
     }
@@ -3929,6 +3943,12 @@ window.addEventListener("message", (event) => {
         if (startupSync && activeEngine === "native" && !nativeCanvasRenderStale) {
           nativeFrameReady = true;
           elements.frame.inert = false;
+          // A replacement frame cannot take keyboard focus by itself; return
+          // it only if nothing else in the shell received focus meanwhile.
+          if (message.restoreFocus === true &&
+              (!document.activeElement || document.activeElement === document.body)) {
+            elements.frame.focus({ preventScroll: true });
+          }
           readyStatus = pendingNativeReadyStatus;
           pendingNativeReadyStatus = null;
           syncNativeHistoryControls();

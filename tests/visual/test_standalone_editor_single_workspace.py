@@ -18,6 +18,124 @@ import pytest
 from schauwerk.visual.standalone_editor import _EditorRequestHandler, build_standalone_editor
 
 
+def _run_workspace_browser_probe(
+    chrome: str,
+    output: Path,
+    tmp_path: Path,
+    width: int,
+    height: int,
+    result_key: str,
+    error_key: str,
+    *,
+    timeout_seconds: float,
+) -> None:
+    """Wait for the probe, not for unrelated external iframe load completion."""
+    from websockets.sync.client import connect
+
+    server = ThreadingHTTPServer(
+        ("127.0.0.1", 0), partial(_EditorRequestHandler, directory=str(output))
+    )
+    thread = threading.Thread(target=server.serve_forever, daemon=True)
+    thread.start()
+    chrome_profile = tmp_path / "chrome-profile"
+    debug_port_file = chrome_profile / "DevToolsActivePort"
+    chrome_env = dict(os.environ)
+    if not os.environ.get("CI"):
+        chrome_env.update({
+            "HOME": str(tmp_path / "home"),
+            "XDG_CONFIG_HOME": str(tmp_path / "xdg-config"),
+            "XDG_CACHE_HOME": str(tmp_path / "xdg-cache"),
+        })
+    proc = None
+    try:
+        proc = subprocess.Popen(
+            [
+                chrome, "--headless=new", "--no-first-run", "--disable-gpu",
+                "--disable-dev-shm-usage", "--no-sandbox", "--disable-background-networking",
+                "--remote-allow-origins=http://localhost", "--remote-debugging-port=0",
+                f"--user-data-dir={chrome_profile}", "about:blank",
+            ],
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+            env=chrome_env,
+        )
+        tab = None
+        for _ in range(100):
+            assert proc.poll() is None, "Chrome exited before DevTools startup"
+            try:
+                debug_port = int(debug_port_file.read_text(encoding="utf-8").splitlines()[0])
+                if not 1 <= debug_port <= 65535:
+                    raise ValueError("invalid Chrome debugging port")
+                with urlopen(f"http://127.0.0.1:{debug_port}/json/list", timeout=1) as response:
+                    tabs = json.load(response)
+                tab = next((item for item in tabs if item.get("type") == "page"), None)
+                if tab:
+                    break
+            except (OSError, TimeoutError, ValueError, IndexError):
+                pass
+            time.sleep(0.12)
+        assert tab, "Chrome DevTools page was not ready"
+
+        with connect(tab["webSocketDebuggerUrl"], origin="http://localhost") as ws:
+            message_id = 0
+
+            def cdp(method: str, parameters: dict | None = None) -> dict:
+                nonlocal message_id
+                message_id += 1
+                expected_id = message_id
+                ws.send(json.dumps({
+                    "id": expected_id, "method": method, "params": parameters or {},
+                }))
+                deadline = time.monotonic() + 20
+                while time.monotonic() < deadline:
+                    timeout = min(10, max(0.1, deadline - time.monotonic()))
+                    try:
+                        message = json.loads(ws.recv(timeout=timeout))
+                    except TimeoutError:
+                        continue
+                    if message.get("id") == expected_id:
+                        assert "error" not in message, message.get("error")
+                        return message.get("result", {})
+                raise AssertionError("Chrome DevTools response timed out: " + method)
+
+            cdp("Page.enable")
+            cdp("Emulation.setDeviceMetricsOverride", {
+                "width": width, "height": height,
+                "deviceScaleFactor": 1, "mobile": False,
+            })
+            cdp("Page.navigate", {"url": f"http://127.0.0.1:{server.server_address[1]}/"})
+            expression = (
+                "({state:document.documentElement?.dataset[" + json.dumps(result_key) + "]||'',"
+                "error:document.documentElement?.dataset[" + json.dumps(error_key) + "]||'',"
+                "width:innerWidth,height:innerHeight})"
+            )
+            deadline = time.monotonic() + timeout_seconds
+            result = {}
+            while time.monotonic() < deadline:
+                evaluated = cdp("Runtime.evaluate", {
+                    "expression": expression, "returnByValue": True,
+                })
+                result = evaluated.get("result", {}).get("value", {})
+                if result.get("state") == "fail":
+                    pytest.fail(str(result.get("error")))
+                if result.get("state") == "pass":
+                    assert (result["width"], result["height"]) == (width, height)
+                    return
+                time.sleep(0.1)
+            pytest.fail(f"real workspace probe {result_key} did not finish: {result}")
+    finally:
+        if proc is not None:
+            proc.terminate()
+            try:
+                proc.wait(timeout=6)
+            except subprocess.TimeoutExpired:
+                proc.kill()
+                proc.wait()
+        server.shutdown()
+        server.server_close()
+        thread.join(timeout=5)
+
+
 @pytest.mark.parametrize(
     ("width", "height", "bottom_y"),
     [
@@ -531,54 +649,11 @@ try {
         encoding="utf-8",
     )
 
-    handler = partial(_EditorRequestHandler, directory=str(output))
-    server = ThreadingHTTPServer(("127.0.0.1", 0), handler)
-    thread = threading.Thread(target=server.serve_forever, daemon=True)
-    thread.start()
-    port = int(server.server_address[1])
-
-    chrome_env = dict(os.environ)
-    local_profile_args: list[str] = []
-    if not os.environ.get("CI"):
-        chrome_env.update(
-            {
-                "HOME": str(tmp_path / "home"),
-                "XDG_CONFIG_HOME": str(tmp_path / "xdg-config"),
-                "XDG_CACHE_HOME": str(tmp_path / "xdg-cache"),
-            }
-        )
-        local_profile_args = [f"--user-data-dir={tmp_path / 'chrome-profile'}"]
-
-    try:
-        completed = subprocess.run(
-            [
-                chrome,
-                "--headless=new",
-                *local_profile_args,
-                "--no-first-run",
-                "--disable-gpu",
-                "--disable-dev-shm-usage",
-                "--no-sandbox",
-                "--run-all-compositor-stages-before-draw",
-                f"--window-size={width},{height}",
-                "--virtual-time-budget=18000",
-                "--dump-dom",
-                f"http://127.0.0.1:{port}/",
-            ],
-            check=False,
-            capture_output=True,
-            text=True,
-            timeout=30,
-            env=chrome_env,
-        )
-    finally:
-        server.shutdown()
-        server.server_close()
-        thread.join(timeout=5)
-
-    assert completed.returncode == 0, completed.stderr
-    assert 'data-single-workspace-browser-regression="pass"' in completed.stdout, completed.stdout
-    assert 'data-single-workspace-browser-regression="fail"' not in completed.stdout, completed.stdout
+    _run_workspace_browser_probe(
+        chrome, output, tmp_path, width, height,
+        "singleWorkspaceBrowserRegression", "singleWorkspaceBrowserRegressionError",
+        timeout_seconds=30,
+    )
 
 
 @pytest.mark.parametrize(
@@ -602,8 +677,6 @@ def test_single_workspace_mobile_320_prepared_download_is_readable_and_clickable
     """Use actual CDP CSS viewports, including simulated left/right screen safe areas."""
     if os.environ.get("CI") and sys.version_info[:2] != (3, 12):
         pytest.skip("mobile browser smoke runs only in the Python 3.12 CI lane")
-
-    from websockets.sync.client import connect
 
     chrome = (
         shutil.which("google-chrome")
@@ -1278,93 +1351,7 @@ const wait = async (predicate, label) => {
         encoding="utf-8",
     )
 
-    server = ThreadingHTTPServer(
-        ("127.0.0.1", 0), partial(_EditorRequestHandler, directory=str(output))
+    _run_workspace_browser_probe(
+        chrome, output, tmp_path, width, height,
+        "mobileBar320Smoke", "mobileBar320Error", timeout_seconds=12,
     )
-    thread = threading.Thread(target=server.serve_forever, daemon=True)
-    thread.start()
-    chrome_profile = tmp_path / "chrome-profile"
-    debug_port_file = chrome_profile / "DevToolsActivePort"
-    proc = subprocess.Popen(
-        [
-            chrome, "--headless=new", "--no-first-run", "--disable-gpu",
-            "--disable-dev-shm-usage", "--no-sandbox",
-            "--remote-allow-origins=http://localhost",
-            "--remote-debugging-port=0",
-            f"--user-data-dir={chrome_profile}",
-            "about:blank",
-        ],
-        stdout=subprocess.DEVNULL,
-        stderr=subprocess.DEVNULL,
-    )
-    try:
-        tab = None
-        for _ in range(100):
-            try:
-                # Chrome owns port selection; no temporary free-port race.
-                port_text = debug_port_file.read_text(encoding="utf-8").splitlines()[0]
-                debug_port = int(port_text)
-                if not 1 <= debug_port <= 65535:
-                    raise ValueError("invalid Chrome debugging port")
-                with urlopen(f"http://127.0.0.1:{debug_port}/json/list", timeout=1) as response:
-                    tabs = json.load(response)
-                tab = next((item for item in tabs if item.get("type") == "page"), None)
-                if tab:
-                    break
-            except (OSError, TimeoutError, ValueError, IndexError):
-                pass
-            time.sleep(0.12)
-        assert tab, "Chrome DevTools page was not ready"
-
-        with connect(tab["webSocketDebuggerUrl"], origin="http://localhost") as ws:
-            message_id = 0
-
-            def cdp(method: str, parameters: dict | None = None) -> dict:
-                nonlocal message_id
-                message_id += 1
-                expected_id = message_id
-                ws.send(json.dumps({
-                    "id": expected_id, "method": method, "params": parameters or {},
-                }))
-                deadline = time.monotonic() + 20
-                while time.monotonic() < deadline:
-                    timeout = min(10, max(0.1, deadline - time.monotonic()))
-                    message = json.loads(ws.recv(timeout=timeout))
-                    if message.get("id") == expected_id:
-                        assert "error" not in message, message.get("error")
-                        return message.get("result", {})
-                raise AssertionError("Chrome DevTools response timed out: " + method)
-
-            cdp("Page.enable")
-            cdp("Runtime.enable")
-            cdp("Emulation.setDeviceMetricsOverride", {
-                "width": width, "height": height,
-                "deviceScaleFactor": 1, "mobile": False,
-            })
-            cdp("Page.navigate", {"url": f"http://127.0.0.1:{server.server_address[1]}/"})
-            for _ in range(120):
-                evaluated = cdp("Runtime.evaluate", {
-                    "expression": (
-                        "({state:document.documentElement.dataset.mobileBar320Smoke||'',"
-                        "error:document.documentElement.dataset.mobileBar320Error||''})"
-                    ),
-                    "returnByValue": True,
-                })
-                result = evaluated.get("result", {}).get("value", {})
-                if result.get("state") == "fail":
-                    pytest.fail(str(result.get("error")))
-                if result.get("state") == "pass":
-                    break
-                time.sleep(0.1)
-            else:
-                pytest.fail("real 320px mobile bar probe did not finish")
-    finally:
-        proc.terminate()
-        try:
-            proc.wait(timeout=6)
-        except subprocess.TimeoutExpired:
-            proc.kill()
-            proc.wait()
-        server.shutdown()
-        server.server_close()
-        thread.join(timeout=5)

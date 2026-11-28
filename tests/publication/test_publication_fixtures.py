@@ -64,6 +64,27 @@ _HISTORICAL_SOURCE_SHA256 = {
     "tests/visual/test_native_canvas_smart_router.py": (
         "3337ed70d1c1d00f77f8d6e34889631d3dc599a7e0608a54e84f0acddb05e19e"
     ),
+    # Workspace CDP harness: exact pre-audit Git blob at c7184999fa68344926310bb62cbbd0acadfc13e0.
+    # The free-canvas proof remains historical; the current workspace probes run separately.
+    "tests/visual/test_standalone_editor_single_workspace.py": (
+        "a1548242f0b9809c7f5bbc7361dc53c13d6f9f5c16201c4fccbe9afa6f8ee261"
+    ),
+    # Follow-up input and process-loop changes: immutable pre-audit Main blobs.
+    "src/schauwerk/visual/representation.py": (
+        "6e53f09f0c68e25c721203c2a879092a55d6af5920e058015749434dd62716fb"
+    ),
+    "src/schauwerk/visual/drawio_import.py": (
+        "cad4db096e45dbf572801b3086980ad0c1d066be51640df32f32cde480da1b2c"
+    ),
+    "tests/visual/test_drawio_import.py": (
+        "e67055af75d07dc6a64252fae78027cd40ff9c3afd55d1e87f4add65e2d4c4f0"
+    ),
+    "tests/visual/test_native_diagram.py": (
+        "adf8fbb48d2304905301913199b414e4ad39d2e81ac2d6d7978fb9e63eb42c09"
+    ),
+    "tests/visual/test_representation_router.py": (
+        "61ee0014fc1fe9a7ad6e9a32c5e5d6e15c1a52b2de6c4900ae11e36256c396f6"
+    ),
 }
 
 

@@ -1253,6 +1253,8 @@ let relevanceOnlyEnabled = false; // Hides non-neighbors, never edits the model.
 let labelsOnDemandEnabled = false; // Session-only label visibility, never source state.
 let edgeCreateSource = null;
 let edgeReattach = null;
+let keyboardRebuildFocusId = null;
+let rebuildFocusRequestId = null;
 let textEditTarget = null;
 let gesture = null;
 let observationMode = false;
@@ -1536,13 +1538,18 @@ function publishDocumentState(eventName = "native-document-change", document = d
   const canvasState = canvasFromDocument(boundedDocument);
   if (!canvasState) return;
   window.parent.postMessage(
-    { event: eventName, document: boundedDocument, canvas: canvasState, ...(startup ? { startup: true } : {}) },
+    {
+      event: eventName, document: boundedDocument, canvas: canvasState,
+      ...(startup ? { startup: true } : {}),
+      ...(startup && rebuildFocusRequestId ? { restoreFocus: true } : {}),
+    },
     window.location.origin,
   );
 }
 
-function rebuildDocument(document) {
+function rebuildDocument(document, { keyboardFocusId = null } = {}) {
   if (observationMode || !documentEditorHosted || !document) return;
+  keyboardRebuildFocusId = keyboardFocusId;
   sourceModel = boundedDocumentState(document);
   overrides = Object.create(null);
   publishDocumentState("native-document-rebuild", sourceModel);
@@ -1810,9 +1817,361 @@ function placeLiveEdgeConflict(edgeState, conflict) {
     } else edgeState.path.removeAttribute("stroke-dasharray");
   }
 }
+function refreshProcessLocalSelfLoops() {
+  if (documentMode || svg.dataset.intent !== "process") return;
+  const loops = [...edges.values()].filter(edge => edge.route === "process-local-self-loop");
+  const mixed = [...edges.values()].filter(edge => edge.route === "process-mixed-card-safe");
+  if (!loops.length) return;
+  const frame = svg.viewBox.baseVal;
+  const cards = [...nodes.keys()].map(id => [id, liveBounds(id)]).filter(([, b]) => b);
+  const rect = (x, y, w, h) => [x, y, x + w, y + h];
+  const labelBox = (x, y, w, h) => rect(x - w / 2, y - h / 2, w, h);
+  const intersects = (a, b, pad = 2) => a[0] < b[2] + pad && a[2] > b[0] - pad &&
+    a[1] < b[3] + pad && a[3] > b[1] - pad;
+  // Exact line/rectangle clipping, also used for sampled nonlocal curves.
+  const hits = (a, b, box, pad = 0) => {
+    let lo = 0, hi = 1;
+    for (let axis = 0; axis < 2; axis++) {
+      const d = b[axis] - a[axis];
+      const min = box[axis] - pad, max = box[axis + 2] + pad;
+      if (Math.abs(d) < 1e-9) {
+        if (a[axis] <= min || a[axis] >= max) return false;
+      } else {
+        const p = (min - a[axis]) / d, q = (max - a[axis]) / d;
+        lo = Math.max(lo, Math.min(p, q)); hi = Math.min(hi, Math.max(p, q));
+        if (hi <= lo) return false;
+      }
+    }
+    return hi > lo;
+  };
+  const segments = points => points.slice(1).map((p, i) => [points[i], p]);
+  const pathHits = (points, box, pad = 0) => segments(points).some(([a, b]) => hits(a, b, box, pad));
+  const sharedStroke = (points, other) => segments(points).some(([a,b]) =>
+    segments(other).some(([c,d]) => [0,1].some(axis => {
+      const cross = 1-axis;
+      return Math.abs(a[cross]-b[cross]) < .01 && Math.abs(c[cross]-d[cross]) < .01 &&
+        Math.abs(a[cross]-c[cross]) < .5 &&
+        Math.min(Math.max(a[axis],b[axis]),Math.max(c[axis],d[axis])) -
+        Math.max(Math.min(a[axis],b[axis]),Math.min(c[axis],d[axis])) > 2;
+    }))
+  );
+  const pathPoints = path => {
+    if (!/^[ML0-9.,\s-]+$/.test(path)) return null;
+    const parts = [...path.matchAll(/([ML])\s*([^ML]*)/g)];
+    if (parts.length < 2 || parts.length > 128 || parts[0][1] !== "M" ||
+        parts.slice(1).some(part => part[1] !== "L")) return null;
+    const points = parts.map(part => (part[2].match(/-?(?:\d+(?:\.\d*)?|\.\d+)/g) || []).map(Number));
+    return points.every(p => p.length === 2 && p.every(Number.isFinite)) ? points : null;
+  };
+  // Generated routes contain absolute M/L/C commands. Flatten their curves
+  // once instead of repeatedly asking the SVG engine for arc-length samples.
+  // Each subdivided cubic's control hull stays within the chord tolerance.
+  const curveTolerance = .2;
+  const flattenCurvePath = path => {
+    if (!/^[MLC0-9+.,\s-]+$/.test(path)) return null;
+    const chunks = [...path.matchAll(/([MLC])\s*([^MLC]*)/g)];
+    if (chunks.length < 2 || chunks.length > 128 || chunks[0][1] !== "M" ||
+        chunks.slice(1).some(part => part[1] === "M")) return null;
+    const values = chunks.map(part =>
+      (part[2].match(/[+-]?(?:\d+(?:\.\d*)?|\.\d+)/g) || []).map(Number));
+    if (!values.every((v,i) => v.length === (chunks[i][1] === "C" ? 6 : 2) &&
+        v.every(Number.isFinite))) return null;
+    const points = [values[0]];
+    const mid = (a,b) => [(a[0]+b[0])/2,(a[1]+b[1])/2];
+    const deviationSq = (p,a,b) => {
+      const dx=b[0]-a[0],dy=b[1]-a[1],d=dx*dx+dy*dy;
+      const t=d ? Math.max(0,Math.min(1,((p[0]-a[0])*dx+(p[1]-a[1])*dy)/d)) : 0;
+      return (p[0]-a[0]-t*dx)**2+(p[1]-a[1]-t*dy)**2;
+    };
+    const append = p => { if (points.length >= 512) return false; points.push(p); return true; };
+    const cubic = (a,b,c,d,depth) => {
+      if (Math.max(deviationSq(b,a,d),deviationSq(c,a,d)) <= curveTolerance**2)
+        return append(d);
+      if (depth >= 10) return false;
+      const ab=mid(a,b),bc=mid(b,c),cd=mid(c,d);
+      const abc=mid(ab,bc),bcd=mid(bc,cd),centre=mid(abc,bcd);
+      return cubic(a,ab,abc,centre,depth+1) && cubic(centre,bcd,cd,d,depth+1);
+    };
+    for (let i=1;i<chunks.length;i++) {
+      const v=values[i];
+      if (chunks[i][1] === "L") {
+        if (!append(v)) return null;
+      } else if (!cubic(points[points.length-1],v.slice(0,2),v.slice(2,4),v.slice(4,6),0)) {
+        return null;
+      }
+    }
+    // Keep a useful label-search density on long straight pieces without
+    // discarding any vertices of the bounded curve approximation.
+    const lengths = points.slice(1).map((p,i) => Math.hypot(p[0]-points[i][0],p[1]-points[i][1]));
+    const spacing = Math.max(6,lengths.reduce((a,b)=>a+b,0)/128);
+    const dense = [points[0]];
+    for (let i=1;i<points.length;i++) {
+      const a=points[i-1],b=points[i],n=Math.max(1,Math.ceil(lengths[i-1]/spacing));
+      for (let j=1;j<=n;j++) dense.push([a[0]+(b[0]-a[0])*j/n,a[1]+(b[1]-a[1])*j/n]);
+    }
+    return dense;
+  };
+  const sampledPath = (edge,path) => {
+    const linear=pathPoints(path);
+    if (linear) return {points:linear,error:0};
+    const flattened=flattenCurvePath(path);
+    if (flattened) return {points:flattened,error:curveTolerance};
+    // Unrecognized/over-budget geometry retains the previous browser path.
+    const old=edge.path.getAttribute("d");
+    try {
+      edge.path.setAttribute("d",path);
+      const length=edge.path.getTotalLength();
+      const count=Math.max(2,Math.min(128,Math.ceil(length/6)));
+      return {points:Array.from({length:count+1},(_,i)=>{
+        const p=edge.path.getPointAtLength(length*i/count);
+        return [p.x,p.y];
+      }),error:null};
+    } catch (_) { return {points:[],error:null}; }
+    finally { edge.path.setAttribute("d",old||""); }
+  };
+  const serialize = points => points.map((p, i) =>
+    (i === 0 ? "M " : "L ") + p.map(v => v.toFixed(1)).join(" ")
+  ).join(" ");
+  const bounds = cards.map(([id,b]) => [id, rect(b.x,b.y,b.width,b.height)]);
+  const header = svg.querySelector("#native-clip-purpose rect");
+  const headerBottom = header
+    ? Number(header.getAttribute("y")) + Number(header.getAttribute("height"))
+    : 104;
+  const inside = box => box[0] >= frame.x + 8 && box[1] >= Math.max(frame.y + 8, headerBottom) &&
+    box[2] <= frame.x + frame.width - 8 && box[3] <= frame.y + frame.height - 8;
+  const unchanged = cards.every(([id]) => {
+    const off = nodeOffset(overrides, id, documentOffsetBudget);
+    return off.x === 0 && off.y === 0;
+  });
+  const reserved = [];
+  for (const peer of edges.values()) {
+    if (peer.route === "process-local-self-loop" || peer.route === "process-mixed-card-safe") continue;
+    const w = Number(peer.labelRect?.getAttribute("width") || 0);
+    const h = Number(peer.labelRect?.getAttribute("height") || 0);
+    if (!w || !h) continue;
+    const {points}=sampledPath(peer,peer.path.getAttribute("d")||"");
+    reserved.push({edge:peer,points,box:labelBox(peer.naturalLabelX,peer.naturalLabelY,w,h)});
+  }
+  for (const edge of loops) {
+    const base = pathPoints(edge.basePath);
+    const card = cards.find(([id]) => id === edge.from)?.[1];
+    const w = Number(edge.labelRect?.getAttribute("width") || 0);
+    const h = Number(edge.labelRect?.getAttribute("height") || 0);
+    if (!base || !card || !w || !h) continue;
+    if (unchanged) {
+      edge.path.setAttribute("d", edge.basePath);
+      edge.hitPath.setAttribute("d", edge.basePath);
+      resetEdgeLabel(edge);
+      placeLiveEdgeConflict(edge, false);
+      edge.element.removeAttribute("data-label-conflict");
+      continue;
+    }
+    const offset = nodeOffset(overrides, edge.from, documentOffsetBudget);
+    const translated = {points:base.map(([x,y]) => [x+offset.x,y+offset.y]),
+      x:edge.baseLabelX+offset.x,y:edge.baseLabelY+offset.y};
+    const boxFor = c => labelBox(c.x,c.y,w,h);
+    const fits = c => inside(boxFor(c)) && c.points.every(([x,y]) =>
+      x >= frame.x && x <= frame.x+frame.width && y >= headerBottom &&
+      y <= frame.y+frame.height);
+    const clear = c => {
+      const box = boxFor(c);
+      return fits(c) && !bounds.some(([id,b]) => intersects(box,b) ||
+        (id !== edge.from && pathHits(c.points,b,1))) &&
+        !reserved.some(peer => intersects(box,peer.box) || pathHits(c.points,peer.box,2) ||
+          pathHits(peer.points,box,2) || sharedStroke(c.points,peer.points));
+    };
+    let chosen = clear(translated) ? translated : null;
+    let fallback = fits(translated) ? translated : null;
+    if (!chosen) {
+      // Use the same local rail geometry as the server. Reorient the complete
+      // labelled loop, never drop back to an unrelated unlabelled Bezier.
+      outer: for (const extra of [0,12,24,40,64,88,116,148,184]) {
+        for (const side of ["bottom","right","top","left"]) {
+          const horizontal = side === "top" || side === "bottom";
+          const dim = horizontal ? card.width : card.height;
+          const across = horizontal ? h : w, along = horizontal ? w : h;
+          const origin = horizontal ? card.x : card.y;
+          const boundary = side === "bottom" ? card.y+card.height : side === "top" ? card.y :
+            side === "right" ? card.x+card.width : card.x;
+          const sign = side === "bottom" || side === "right" ? 1 : -1;
+          const half = Math.min(dim/2-8,along/2+14+extra/5);
+          if (!(half > 0)) continue;
+          for (const shift of [0,-24,24,-48,48,-72,72]) {
+            const centre = Math.max(half+6,Math.min(dim-half-6,dim/2+shift));
+            const rail = boundary+sign*(across/2+8+extra);
+            const lo = origin+centre-half, hi = origin+centre+half;
+            const candidate = horizontal
+              ? {points:[[lo,boundary],[lo,rail],[hi,rail],[hi,boundary]],x:origin+centre,y:rail}
+              : {points:[[boundary,lo],[rail,lo],[rail,hi],[boundary,hi]],x:rail,y:origin+centre};
+            if (!fallback && fits(candidate)) fallback = candidate;
+            if (clear(candidate)) { chosen = candidate; break outer; }
+          }
+        }
+      }
+    }
+    const geometry = chosen || fallback || translated;
+    const path = serialize(geometry.points);
+    edge.path.setAttribute("d",path); edge.hitPath.setAttribute("d",path);
+    edge.naturalLabelX = geometry.x; edge.naturalLabelY = geometry.y;
+    placeLiveLabel(edge,geometry.x,geometry.y);
+    placeLiveEdgeConflict(edge,!chosen);
+    if (chosen) edge.element.removeAttribute("data-label-conflict");
+    else edge.element.dataset.labelConflict = "true";
+    reserved.push({edge,points:geometry.points,box:boxFor(geometry)});
+  }
+  if (!mixed.length) return;
+  if (unchanged) {
+    for (const edge of mixed) {
+      edge.path.setAttribute("d", edge.basePath);
+      edge.hitPath.setAttribute("d", edge.basePath);
+      resetEdgeLabel(edge);
+      placeLiveEdgeConflict(edge, false);
+      edge.element.removeAttribute("data-label-conflict");
+    }
+    return;
+  }
+
+  // The server reserves a whole labelled stack before routing its ordinary
+  // peers. Use the existing browser smart router with the same live envelope.
+  const liveNodes = cards.map(([id,b]) => ({id,type:"node",...b}));
+  const nodeById = new Map(liveNodes.map(n => [n.id,n]));
+  const stackBoxes = new Map();
+  for (const peer of reserved) {
+    if (peer.edge?.route !== "process-local-self-loop") continue;
+    const card = nodeById.get(peer.edge.from);
+    if (!card || !peer.points.length) continue;
+    const [x,y] = peer.points[0];
+    const sides = [
+      ["bottom",Math.abs(y-card.y-card.height)],
+      ["top",Math.abs(y-card.y)],
+      ["right",Math.abs(x-card.x-card.width)],
+      ["left",Math.abs(x-card.x)],
+    ].sort((a,b)=>a[1]-b[1]);
+    const side = sides[0][0], key = JSON.stringify([card.id,side]);
+    const xs = [...peer.points.map(p=>p[0]),peer.box[0],peer.box[2]];
+    const ys = [...peer.points.map(p=>p[1]),peer.box[1],peer.box[3]];
+    const box = [Math.min(...xs),Math.min(...ys),Math.max(...xs),Math.max(...ys)];
+    if (side==="bottom") box[1]=Math.max(box[1],card.y+card.height+.1);
+    if (side==="top") box[3]=Math.min(box[3],card.y-.1);
+    if (side==="right") box[0]=Math.max(box[0],card.x+card.width+.1);
+    if (side==="left") box[2]=Math.min(box[2],card.x-.1);
+    const old = stackBoxes.get(key);
+    stackBoxes.set(key,old ? [Math.min(old[0],box[0]),Math.min(old[1],box[1]),
+      Math.max(old[2],box[2]),Math.max(old[3],box[3])] : box);
+  }
+  const headers = [...svg.querySelectorAll('[data-source-kind="group"] > rect')].map(r =>
+    rect(Number(r.getAttribute("x")),Number(r.getAttribute("y")),
+      Number(r.getAttribute("width")),44));
+  headers.push([frame.x,frame.y,frame.x+frame.width,headerBottom]);
+  const stackObstacles = [...stackBoxes.values()];
+  const addObstacle = (box,id) => {
+    if (box[2]>box[0] && box[3]>box[1]) liveNodes.push({
+      id,type:"node",x:box[0],y:box[1],width:box[2]-box[0],height:box[3]-box[1],
+    });
+  };
+  [...stackObstacles,...headers].forEach((box,i)=>addObstacle(box,"__process_obstacle_"+i));
+  for (const peer of reserved) {
+    if (peer.edge?.route !== "process-local-self-loop")
+      addObstacle(peer.box,"__process_label_"+peer.edge?.id);
+  }
+  const distanceSq = (points,x,y) => {
+    let best=Infinity;
+    for (const [a,b] of segments(points)) {
+      const dx=b[0]-a[0],dy=b[1]-a[1],d=dx*dx+dy*dy;
+      const t=d ? Math.min(1,Math.max(0,((x-a[0])*dx+(y-a[1])*dy)/d)) : 0;
+      best=Math.min(best,(x-a[0]-t*dx)**2+(y-a[1]-t*dy)**2);
+    }
+    return best;
+  };
+  const prior=[];
+  for (const edge of mixed) {
+    const source=nodeById.get(edge.from), target=nodeById.get(edge.to);
+    if (!source || !target) continue;
+    const w=Number(edge.labelRect?.getAttribute("width")||0);
+    const h=Number(edge.labelRect?.getAttribute("height")||0);
+    const chooseLabel=(path,sample,preferred) => {
+      const {points,error}=sample;
+      // Use the previous two-unit card inset, enlarged by the approximation
+      // error so a curve cannot hide behind its chord.
+      const cardHit = error === null ? !knowledgePathAvoidsCards(edge,path) :
+        bounds.some(([,b])=>pathHits(points,b,error-2));
+      if (points.length < 2 || !points.some((p,i)=>i>0 &&
+          (p[0]!==points[0][0] || p[1]!==points[0][1])) || cardHit ||
+          points.some(([x,y])=>x<frame.x+8||y<headerBottom||
+            x>frame.x+frame.width-8||y>frame.y+frame.height-8) ||
+          [...stackObstacles,...headers].some(b=>pathHits(points,b))) return null;
+      if (reserved.some(peer=>{
+        const cx=(peer.box[0]+peer.box[2])/2,cy=(peer.box[1]+peer.box[3])/2;
+        return pathHits(points,peer.box,2)||sharedStroke(points,peer.points)||
+          distanceSq(points,cx,cy)<=distanceSq(peer.points,cx,cy);
+      })) return null;
+      const candidates=[preferred];
+      for (const [a,b] of segments(points)) {
+        for (const t of [.25,.5,.75]) candidates.push([
+          a[0]+t*(b[0]-a[0]),a[1]+t*(b[1]-a[1])]);
+      }
+      candidates.sort((a,b)=>
+        Math.abs(a[0]-preferred[0])+Math.abs(a[1]-preferred[1])-
+        Math.abs(b[0]-preferred[0])-Math.abs(b[1]-preferred[1]));
+      for (const [x,y] of candidates) {
+        const box=labelBox(x,y,w,h),own=distanceSq(points,x,y);
+        if (own>1 || !inside(box) || bounds.some(([,b])=>intersects(box,b)) ||
+            headers.some(b=>intersects(box,b)) ||
+            reserved.some(peer=>intersects(box,peer.box)||pathHits(peer.points,box,2)||
+              distanceSq(peer.points,x,y)<=own)) continue;
+        return {path,points,x,y,box};
+      }
+      return null;
+    };
+    const fromOffset=nodeOffset(overrides,edge.from,documentOffsetBudget);
+    const toOffset=nodeOffset(overrides,edge.to,documentOffsetBudget);
+    const anchored=nudgedCertifiedKnowledgePath(edge,fromOffset,toOffset);
+    const anchoredLabel=anchored ? nudgedKnowledgeLabel(edge,anchored) : null;
+    let plan=anchored && anchoredLabel ? chooseLabel(
+      anchored,sampledPath(edge,anchored),[anchoredLabel.x,anchoredLabel.y]) : null;
+    if (!plan) {
+      const sides=["left","right","top","bottom"];
+      const ports=[[null,null],...sides.flatMap(a=>sides.map(b=>[a,b]))];
+      for (const [fromSide,toSide] of ports) {
+        const candidate=smartEdgeGeometry(source,target,liveNodes,{
+          fromSide,toSide,priorRoutes:prior.slice(-12),
+        });
+        if (!candidate?.collisionFree) continue;
+        plan=chooseLabel(candidate.path,sampledPath(edge,candidate.path),
+          [candidate.labelX,candidate.labelY]);
+        if (plan) break;
+      }
+    }
+    if (plan) {
+      edge.path.setAttribute("d",plan.path);
+      edge.hitPath.setAttribute("d",plan.path);
+      edge.naturalLabelX=plan.x;edge.naturalLabelY=plan.y;
+      placeLiveLabel(edge,plan.x,plan.y);
+      placeLiveEdgeConflict(edge,false);
+      edge.element.removeAttribute("data-label-conflict");
+      reserved.push({edge,points:plan.points,box:plan.box});
+      addObstacle(plan.box,"__process_mixed_label_"+prior.length);
+      prior.push({from:edge.from,to:edge.to,points:plan.points});
+    } else {
+      // An exhausted local search must not masquerade as a certified route.
+      const fallback=liveEdgeGeometry(source,target,{
+        selfLoop:edge.from===edge.to,kind:edge.kind,lane:edge.lane,
+        canvasWidth:frame.width,canvasHeight:frame.height,
+      });
+      edge.path.setAttribute("d",fallback.path);
+      edge.hitPath.setAttribute("d",fallback.path);
+      edge.naturalLabelX=fallback.labelX;edge.naturalLabelY=fallback.labelY;
+      placeLiveLabel(edge,fallback.labelX,fallback.labelY);
+      placeLiveEdgeConflict(edge,true);
+      edge.element.dataset.labelConflict="true";
+    }
+  }
+}
+
 function relocateLiveEdgeLabels() {
   // Other native representation kinds keep their existing routing contract.
   if (!documentMode && !knowledgeMapOverview) {
+    refreshProcessLocalSelfLoops();
     refreshSharedLabelCutout();
     return;
   }
@@ -2073,6 +2432,8 @@ function knowledgePathAvoidsCards(edge, candidate) {
 function updateEdgeGeometry(edgeId) {
   const edgeState = edges.get(edgeId);
   if (!edgeState) return;
+  // The local loop planner owns both its stroke and label after node updates.
+  if (!documentMode && ["process-local-self-loop","process-mixed-card-safe"].includes(edgeState.route)) return;
   const fromOffset = nodeOffset(overrides, edgeState.from, documentOffsetBudget);
   const toOffset = nodeOffset(overrides, edgeState.to, documentOffsetBudget);
   if (documentMode && routingMode() === "smart") {
@@ -3135,11 +3496,11 @@ function zoomBy(factor, anchor = null) {
 }
 
 // Undo/Redo and native edits replace the embedded iframe after a successful
-// server render. Carry only a user-controlled view across that transactional
-// replacement: a new document or automatic fit must start with its own view.
+// server render. Carry the user-controlled view or a keyboard relation
+// target across that exact replacement, never into a different document.
 const MANUAL_VIEW_HANDOFF_KEY = "__schauwerkNativeManualViewHandoffV1";
 window.addEventListener("pagehide", () => {
-  if (!documentEditorHosted || autoFitActive) return;
+  if (!documentEditorHosted || (autoFitActive && !keyboardRebuildFocusId)) return;
   try {
     const oldFrame = window.frameElement;
     const host = window.parent;
@@ -3149,10 +3510,13 @@ window.addEventListener("pagehide", () => {
     if (!oldFrame?.inert || !host.document.body.classList.contains("workspace-active") ||
         host.document.querySelector("#nativeRetryButton")?.hidden === false ||
         host.document.querySelector("#editorFrame") !== oldFrame) return;
-    if (![view.x, view.y, view.scale].every(Number.isFinite) || view.scale <= 0) return;
+    const manualView = !autoFitActive && [view.x, view.y, view.scale].every(Number.isFinite)
+      && view.scale > 0 ? { x: view.x, y: view.y, scale: view.scale } : null;
+    if (!manualView && !keyboardRebuildFocusId) return;
     host[MANUAL_VIEW_HANDOFF_KEY] = {
       oldFrame,
-      view: { x: view.x, y: view.y, scale: view.scale },
+      view: manualView,
+      focusNodeId: keyboardRebuildFocusId,
       expiresAt: Date.now() + 45000,
     };
   } catch (_) { /* A foreign embed cannot transfer view-only state. */ }
@@ -3171,12 +3535,77 @@ function restoreManualViewAfterNativeFrameReplacement() {
         pending.oldFrame === frame || pending.oldFrame?.isConnected ||
         !pending.oldFrame?.inert || Date.now() > pending.expiresAt) return;
     const saved = pending.view;
-    if (![saved?.x, saved?.y, saved?.scale].every(Number.isFinite) ||
-        saved.scale <= 0 || saved.scale > MAX_SCALE) return;
-    view = { x: saved.x, y: saved.y, scale: saved.scale };
-    autoFitActive = false;
-    applyView();
+    if ([saved?.x, saved?.y, saved?.scale].every(Number.isFinite) &&
+        saved.scale > 0 && saved.scale <= MAX_SCALE) {
+      view = { x: saved.x, y: saved.y, scale: saved.scale };
+      autoFitActive = false;
+      applyView();
+    }
+    if (typeof pending.focusNodeId === "string") restoreRebuildFocus(pending.focusNodeId);
   } catch (_) { /* Standalone or cross-origin viewers retain default fit. */ }
+}
+
+// A replacement frame starts inert and unfocused, and browsers may ignore
+// focus() from an unfocused subframe. If the direct handoff does not take,
+// the startup sync asks the host to return focus to this frame; the node is
+// focused once the frame receives it. Pointer input or a short timeout drops
+// the request so a later click into the frame is never redirected.
+const REBUILD_FOCUS_REQUEST_MS = 3000;
+function restoreRebuildFocus(nodeId) {
+  const node = nodes.get(nodeId);
+  if (!node) return;
+  node.focus({ preventScroll: true });
+  if (document.activeElement === node) return;
+  rebuildFocusRequestId = nodeId;
+  const drop = () => {
+    rebuildFocusRequestId = null;
+    window.removeEventListener("focus", complete);
+    window.removeEventListener("pointerdown", drop, true);
+  };
+  const complete = () => {
+    const pendingId = rebuildFocusRequestId;
+    drop();
+    if (pendingId) nodes.get(pendingId)?.focus({ preventScroll: true });
+  };
+  window.addEventListener("focus", complete);
+  window.addEventListener("pointerdown", drop, true);
+  setTimeout(drop, REBUILD_FOCUS_REQUEST_MS);
+}
+
+// Node activation completes the same pending relation operation regardless
+// of whether the user uses a pointer or a keyboard.
+function completePendingEdgeTarget(sourceId, finishActivation = () => {}, keyboard = false) {
+  if (!documentEditorHosted || observationMode || !nodes.has(sourceId) ||
+      (!edgeCreateSource && !edgeReattach)) return false;
+  const createSource = edgeCreateSource;
+  const reattach = edgeReattach;
+  const snapshot = documentSnapshot();
+  edgeCreateSource = null;
+  edgeReattach = null;
+  let changed = false;
+  if (snapshot && reattach) {
+    const edge = snapshot.edges.find(item => String(item.id) === reattach.edgeId);
+    if (edge && edge[reattach.endpoint] !== sourceId) {
+      edge[reattach.endpoint] = sourceId;
+      edge.source = cloneJson(edge.source || {});
+      edge.source[reattach.endpoint === "from" ? "fromNode" : "toNode"] = sourceId;
+      changed = true;
+    } else {
+      setStatus("Verbindung unverändert");
+    }
+  } else if (snapshot && createSource &&
+      documentMutationWithinProductLimits(snapshot, { addEdges: 1 })) {
+    const id = uniqueId("edge_", [...snapshot.nodes, ...snapshot.edges]);
+    snapshot.edges.push({
+      id, from: createSource, to: sourceId, label: "",
+      from_side: null, to_side: null, from_end: "none", to_end: "arrow",
+      source: {},
+    });
+    changed = true;
+  }
+  finishActivation();
+  if (changed) rebuildDocument(snapshot, { keyboardFocusId: keyboard ? sourceId : null });
+  return true;
 }
 
 function nodeFromTarget(target) {
@@ -3260,6 +3689,8 @@ for (const node of svg.querySelectorAll('[data-source-kind="node"]')) {
     if (observationMode) return;
     if (event.key === "Enter" || event.key === " ") {
       event.preventDefault();
+      if (event.repeat || event.isComposing) return;
+      if (completePendingEdgeTarget(sourceId, undefined, true)) return;
       selectNode(sourceId);
       if (knowledgeMapOverview && view.scale < COMPACT_OVERVIEW_SCALE)
         focusOverviewTarget({ nodeId: sourceId });
@@ -3671,52 +4102,11 @@ viewport.addEventListener("pointerdown", (event) => {
   }
   if (node) {
     const sourceId = node.dataset.sourceId;
-    if (documentEditorHosted && edgeReattach && sourceId) {
-      const document = documentSnapshot();
-      const edgeItem = document.edges.find(
-        (item) => String(item.id) === edgeReattach.edgeId,
-      );
-      if (edgeItem) {
-        edgeItem[edgeReattach.endpoint] = sourceId;
-        edgeItem.source = cloneJson(edgeItem.source || {});
-        if (edgeReattach.endpoint === "from") edgeItem.source.fromNode = sourceId;
-        else edgeItem.source.toNode = sourceId;
-      }
-      edgeReattach = null;
+    if (completePendingEdgeTarget(sourceId, () => {
       activePointers.delete(event.pointerId);
       try { viewport.releasePointerCapture(event.pointerId); } catch (_) { /* frame rebuild */ }
       releasePointerAutoFitIfIdle();
-      rebuildDocument(document);
-      return;
-    }
-    if (documentEditorHosted && edgeCreateSource && sourceId) {
-      const document = documentSnapshot();
-      if (!documentMutationWithinProductLimits(document, { addEdges: 1 })) {
-        edgeCreateSource = null;
-        activePointers.delete(event.pointerId);
-        try { viewport.releasePointerCapture(event.pointerId); } catch (_) { /* no rebuild */ }
-        releasePointerAutoFitIfIdle();
-        return;
-      }
-      const edgeId = uniqueId("edge_", [...document.nodes, ...document.edges]);
-      document.edges.push({
-        id: edgeId,
-        from: edgeCreateSource,
-        to: sourceId,
-        label: "",
-        from_side: null,
-        to_side: null,
-        from_end: "none",
-        to_end: "arrow",
-        source: {},
-      });
-      edgeCreateSource = null;
-      activePointers.delete(event.pointerId);
-      try { viewport.releasePointerCapture(event.pointerId); } catch (_) { /* frame rebuild */ }
-      releasePointerAutoFitIfIdle();
-      rebuildDocument(document);
-      return;
-    }
+    })) return;
     // Deferred standalone routing pauses during a new gesture; a click
     // without movement must not abandon routes still waiting for certification.
     selectNode(sourceId);
@@ -3991,18 +4381,20 @@ if (documentEditorHosted) {
     });
     rebuildDocument(document);
   });
-  addEdgeButton?.addEventListener("click", () => {
+  addEdgeButton?.addEventListener("click", (event) => {
     if (observationMode) return;
     if (!selectedId) {
       setStatus("Für eine neue Verbindung zuerst ein Element auswählen");
       return;
     }
     edgeCreateSource = selectedId;
+    edgeReattach = null;
     if (editControls instanceof HTMLDetailsElement) editControls.open = false;
+    if (event.detail === 0) nodes.get(selectedId)?.focus({ preventScroll: true });
     setStatus("Ziel für die neue Verbindung auswählen");
   });
   editTextButton?.addEventListener("click", openTextEditor);
-  const beginReattach = (endpoint) => {
+  const beginReattach = (endpoint, keyboard) => {
     if (observationMode) return;
     if (!selectedEdgeId) {
       setStatus("Zuerst eine Verbindung auswählen");
@@ -4011,14 +4403,18 @@ if (documentEditorHosted) {
     edgeCreateSource = null;
     edgeReattach = { edgeId: selectedEdgeId, endpoint };
     if (editControls instanceof HTMLDetailsElement) editControls.open = false;
+    if (keyboard) {
+      const edge = sourceModel.edges.find(item => String(item.id) === selectedEdgeId);
+      nodes.get(String(edge?.[endpoint] || ""))?.focus({ preventScroll: true });
+    }
     setStatus(
       endpoint === "from"
         ? "Neuen Anfang auswählen"
         : "Neues Ziel auswählen"
     );
   };
-  reattachSourceButton?.addEventListener("click", () => beginReattach("from"));
-  reattachTargetButton?.addEventListener("click", () => beginReattach("to"));
+  reattachSourceButton?.addEventListener("click", event => beginReattach("from", event.detail === 0));
+  reattachTargetButton?.addEventListener("click", event => beginReattach("to", event.detail === 0));
   deleteSelectionButton?.addEventListener("click", deleteSelection);
   saveTextButton?.addEventListener("click", () => {
     if (observationMode) return;
@@ -4120,6 +4516,9 @@ window.addEventListener("keydown", (event) => {
   if (event.key !== "Escape") return;
   const pendingEdgeOperation = Boolean(edgeCreateSource || edgeReattach ||
     gesture?.kind === "connection");
+  const cancelFocus = edgeCreateSource
+    ? nodes.get(edgeCreateSource)
+    : edges.get(edgeReattach?.edgeId)?.element;
   if (gesture?.kind === "connection") {
     clearConnectionPreview();
     gesture = null;
@@ -4132,7 +4531,10 @@ window.addEventListener("keydown", (event) => {
   edgeCreateSource = null;
   edgeReattach = null;
   selectNode(null);
-  if (pendingEdgeOperation) setStatus("Verbindungsaktion abgebrochen");
+  if (pendingEdgeOperation) {
+    cancelFocus?.focus({ preventScroll: true });
+    setStatus("Verbindungsaktion abgebrochen");
+  }
 });
 
 const startupStatus = status.textContent;
